@@ -1,0 +1,73 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <externals.blk>
+#include <bits.blk>
+#include "definitions.zir"
+
+fun dci(d : struct DCIParams) {
+var bits : arr[27] bit := {'0, '0, '0, '0, '0, '0, '0, '0, '0, 
+                           '0, '0, '0, '0, '0, '0, '0, '0, '0, 
+                           '0, '0, '0, '0, '0, '0, '0, '0, '0};
+var tmparr : arr[2] int8;
+var tmpbits : arr[16] bit; 
+
+-- TODO: Make this faster:
+-- Do in-language conversion of ints into bits
+-- Avoid inverting bits by fixing endianness
+
+  bits[0] := if (d.DCIFormat == DCI_FORMAT_1A) then '1 else '0;
+  bits[1] := bit(d.AllocationType);
+
+  tmparr[0] := int8(d.Allocation.RIV % 256);
+  tmparr[1] := int8(d.Allocation.RIV / 256);
+  int8_to_bits(tmpbits, tmparr[0,2]);
+  bits[2:12] := invert_bits(tmpbits[0, 11]);
+
+  tmparr[0] := int8(d.ModCoding);
+  int8_to_bits(tmpbits, tmparr[0,1]);
+  bits[13:17] := invert_bits(tmpbits[0, 5]);
+
+  tmparr[0] := int8(d.HARQNo);
+  int8_to_bits(tmpbits, tmparr[0,1]);
+  bits[18:20] := invert_bits(tmpbits[0, 3]);
+
+  bits[21] := bit(d.NewData);
+
+  tmparr[0] := int8(d.RV);
+  int8_to_bits(tmpbits, tmparr[0,1]);
+  bits[22:23] := invert_bits(tmpbits[0, 2]);
+
+  tmparr[0] := int8(d.TPCPUCCH);
+  int8_to_bits(tmpbits, tmparr[0,1]);
+  bits[24:25] := invert_bits(tmpbits[0, 2]);
+
+  -- println d.ModCoding;
+  -- println bits[13,8];
+
+  return bits; 
+};

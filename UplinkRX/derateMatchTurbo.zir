@@ -1,0 +1,164 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <externals.blk>
+#include "../DnlinkTX/definitions.zir"
+
+-- function dk = derateMatchTurbo(ek, D, rv)
+
+
+#define INTL_CONV       0
+#define INTL_TURBO      1
+#define PUNCTURE        -127
+
+-- Specialized interleave for int8, so it does not need input (as if input is 1:D)
+fun drm_interleave_int8(len : int32, var output : arr [MAX_BIT_MSG_SIZE] int32, mode:int16, delta:int16, offset:int32, skip:int16) {
+-- TODO: We don't need to use pik as array?
+var pik : arr [MAX_BIT_MSG_SIZE] int32;
+
+   let P = if (mode == INTL_CONV) then 
+             -- Convolutional interleaver
+             arr {1, 17, 9, 25, 5, 21, 13, 29, 3, 19, 11, 27, 7, 23, 15, 31,
+                  0, 16, 8, 24, 4, 20, 12, 28, 2, 18, 10, 26, 6, 22, 14, 30} 
+           else 
+             -- Turbo interleaver
+             arr {0, 16, 8, 24, 4, 20, 12, 28, 2, 18, 10, 26, 6, 22, 14, 30, 
+                  1, 17, 9, 25, 5, 21, 13, 29, 3, 19, 11, 27, 7, 23, 15, 31};
+
+   let D = len;
+   let CC = 32;
+   let R = ceil_int32(double(D) / double(CC));
+   let Kpi = CC * R;
+
+   for (k:int32) in [0, Kpi] {
+     pik[k] := (P[k/R] + CC*(k % R) + int32(delta)) % Kpi;
+     let ind = offset + k*int32(skip);
+     output[ind] := if (pik[k] < int32(Kpi - D)) then PUNCTURE 
+                    else int32(pik[k] - int32(Kpi - D)); 
+   }
+
+   return Kpi;
+};
+
+
+
+-- Specialized deinterleave for int8 for use in this function
+fun drm_deinterleave_int8(input : arr int8, var output : arr[length(input)] int8, len : int32, mode:int16, delta:int16, offset:int32, skip:int16) {
+var out : arr [MAX_BIT_MSG_SIZE] int8;
+var cnt : int32;
+
+  let P = if (mode == INTL_CONV) then 
+          -- Convolutional interleaver
+          arr {1, 17, 9, 25, 5, 21, 13, 29, 3, 19, 11, 27, 7, 23, 15, 31,
+               0, 16, 8, 24, 4, 20, 12, 28, 2, 18, 10, 26, 6, 22, 14, 30} 
+        else 
+          -- Turbo interleaver
+          arr {0, 16, 8, 24, 4, 20, 12, 28, 2, 18, 10, 26, 6, 22, 14, 30, 
+               1, 17, 9, 25, 5, 21, 13, 29, 3, 19, 11, 27, 7, 23, 15, 31} 
+        in 
+
+  let Pinv = if (mode == INTL_CONV) then 
+          -- Convolutional interleaver
+          arr {16, 0, 24, 8, 20, 4, 28, 12, 18, 2, 26, 10, 22, 6, 30, 14,
+               17, 1, 25, 9, 21, 5, 29, 13, 19, 3, 27, 11, 23, 7, 31, 15}
+        else 
+          -- Turbo interleaver
+          arr {0, 16, 8, 24, 4, 20, 12, 28, 2, 18, 10, 26, 6, 22, 14, 30,
+               1, 17, 9, 25, 5, 21, 13, 29, 3, 19, 11, 27, 7, 23, 15, 31}
+        in 
+
+  let R = len/32 in 
+  for (i:int32) in [0, R] {
+    for (j:int32) in [0, 32] {
+      let indsrc = i + j * R;
+      let inddst = j*32 + i;
+      let ip = inddst / 32;
+      let jp = inddst % 32;
+      let ind = offset + int32(skip)*indsrc;
+      out[(i * 32 + P[j] + int32(delta)) % len] := input[ind];
+    }
+  }
+
+  cnt := 0;
+  for i in [0, len] {
+    if (out[i] != PUNCTURE) then {
+      output[cnt] := out[i];
+      cnt := cnt + 1;
+    }
+  }
+
+  return cnt;
+};
+
+
+
+
+
+fun derateMatchTurbo(ek : arr int8, var dk : arr[MAX_BIT_MSG_SIZE] int8, D : int32, rv : int16) { 
+var wk : arr [MAX_BIT_MSG_SIZE] int32;
+var wkout : arr [MAX_BIT_MSG_SIZE] int8;
+var Kpi : int32;
+var cnt : int32;
+var pad : int32 := 0;
+
+    -- TODO: filler bits in vk2?
+    -- TODO: puncturing, repetition averaging
+    Kpi := drm_interleave_int8(D, wk, INTL_TURBO, 0, 0, 1);
+    drm_interleave_int8(D, wk, INTL_TURBO, 0, Kpi, 2);
+    drm_interleave_int8(D, wk, INTL_TURBO, 1, Kpi+1, 2);
+
+    let CC = 32;
+    let R = ceil_int32(double(D) / double(CC));
+    let Ncb = 3 * R * CC;                    --  TODO: have skipped all the Nsoft stuff
+    let k0 = R * (2 * ceil_int32(double(Ncb) / double(8 * R)) * int32(rv) + 2);
+
+    cnt := 0;
+
+    -- pad = sum(isnan(wk(1:k0)));
+    pad := 0;
+    for i in [0, k0] {
+      if (wk[i] == PUNCTURE) then {
+        pad := pad+1;
+      }
+    }
+
+    for i in [0, 3*Kpi] {
+      if (wk[i] != PUNCTURE) then {
+        let ind = (cnt + 3*D - (k0-pad)) % (3*D); 
+        wkout[i] := ek[ind];
+        cnt := cnt+1;
+      } else {
+        wkout[i] := PUNCTURE;
+      }
+    }
+
+    cnt := drm_deinterleave_int8(wkout[0, MAX_BIT_MSG_SIZE/3], dk[0, MAX_BIT_MSG_SIZE/3], Kpi, INTL_TURBO, 0, 0, 1);
+    cnt := cnt + drm_deinterleave_int8(wkout[Kpi, MAX_BIT_MSG_SIZE/3], dk[cnt, MAX_BIT_MSG_SIZE/3], Kpi, INTL_TURBO, 0, 0, 2);
+    cnt := cnt + drm_deinterleave_int8(wkout[Kpi, MAX_BIT_MSG_SIZE/3], dk[cnt, MAX_BIT_MSG_SIZE/3], Kpi, INTL_TURBO, 1, 1, 2);
+  
+    return cnt;
+}

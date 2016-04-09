@@ -1,0 +1,51 @@
+./tx.pout --TX-input=dummy --TX-dummy-samples=1 --TX-output=dummy --RX-input=dummy --RX-dummy-samples=1 --RX-output=dummy
+Setting up threads...
+Current priority class is 0x80
+Current thead priority class is 0xf
+Thread 6380 started.
+Started TX thread.
+Current priority class is 0x80
+Current thead priority class is 0xf
+Thread 32 started.
+Started RX thread.
+Starting TX ...
+Starting RX ...
+RX Time Elapsed: 0 us 
+RX Total input items (including EOF): 0 (0 B), output items: 0 (0 B)
+TX Time Elapsed: 2816557 us 
+TX Total input items (including EOF): 11625 (0 B), output items: 307200000 (0 B)
+Time Elapsed: 2819823 us 
+./rx.pout --TX-input=dummy --TX-dummy-samples=1 --TX-output=dummy --RX-input=dummy --RX-dummy-samples=100000000 --RX-output=dummy
+Setting up threads...
+Current priority class is 0x80
+Current thead priority class is 0xf
+Thread 17272 started.
+Started TX thread.
+Starting TX ...
+Current priority class is 0x80
+Current thead priority class is 0xf
+Thread 18968 started.
+Started RX thread.
+Starting RX ...
+TX Time Elapsed: 0 us 
+TX Total input items (including EOF): 0 (0 B), output items: 0 (0 B)
+RX Time Elapsed: 2954457 us 
+RX Total input items (including EOF): 100000256 (-1094959104 B), output items: 0 (0 B)
+Time Elapsed: 3051192 us 
+./rx_test1.pout --TX-input=dummy --TX-dummy-samples=1 --TX-output=dummy --RX-input=dummy --RX-dummy-samples=100000000 --RX-output=dummy
+Setting up threads...
+Current priority class is 0x80
+Current thead priority class is 0xf
+Thread 10108 started.
+Started TX thread.
+Current priority class is 0x80
+Current thead priority class is 0xf
+Thread 19316 started.
+Started RX thread.
+Starting TX ...
+Starting RX ...
+TX Time Elapsed: 0 us 
+TX Total input items (including EOF): 0 (0 B), output items: 0 (0 B)
+RX Time Elapsed: 3056135 us 
+RX Total input items (including EOF): 100000256 (-1094959104 B), output items: 0 (0 B)
+Time Elapsed: 3140774 us 

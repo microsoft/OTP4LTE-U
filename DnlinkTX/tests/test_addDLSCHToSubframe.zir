@@ -1,0 +1,113 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include "../definitions.zir"
+#include "../genTemplateSubframe.zir"
+#include "../addDLSCHToSubframe.zir"
+
+fun comp test_addDLSCHToSubframe() {
+var cellGrid : arr[NDLRB*12*14] complex16;
+var tx : struct TXParams; 
+var dlSCH : struct MACDLPacket;
+
+  do {
+    tx := configTX();
+    tx := initTXParams(tx);
+
+    -- Initialize default data packet
+    dlSCH.frame:=0; 
+    dlSCH.subframe:=4;
+    dlSCH.packetType:=MAC_DL_SCH;
+    dlSCH.packetSubtype:=MAC_RRC_Setup;
+    dlSCH.len:=65*8;
+    dlSCH.RV:=0;
+    dlSCH.RNTI:=64;
+    dlSCH.lenRB:=12;
+    dlSCH.startRB:=0;
+  }
+
+
+  do{
+    dlSCH.len:=65*8;
+    dlSCH.lenRB:=12;
+  }
+  genTemplateSubframe(cellGrid, 4, tx, true);
+  addDLSCHToSubframe(cellGrid, dlSCH, tx);
+  emits cellGrid;
+
+
+  do{
+    dlSCH.len:=129*8;
+    dlSCH.lenRB:=12;
+  }
+  genTemplateSubframe(cellGrid, 4, tx, true);
+  addDLSCHToSubframe(cellGrid, dlSCH, tx);
+  emits cellGrid;
+
+
+  do{
+    dlSCH.len:=233*8;
+    dlSCH.lenRB:=12;
+  }
+  genTemplateSubframe(cellGrid, 4, tx, true);
+  addDLSCHToSubframe(cellGrid, dlSCH, tx);
+  emits cellGrid;
+
+
+
+  do{
+    dlSCH.len:=101*8;
+    dlSCH.lenRB:=23;
+  }
+  genTemplateSubframe(cellGrid, 4, tx, true);
+  addDLSCHToSubframe(cellGrid, dlSCH, tx);
+  emits cellGrid;
+
+
+  do{
+    dlSCH.len:=253*8;
+    dlSCH.lenRB:=23;
+  }
+  genTemplateSubframe(cellGrid, 4, tx, true);
+  addDLSCHToSubframe(cellGrid, dlSCH, tx);
+  emits cellGrid;
+
+
+  do{
+    dlSCH.len:=453*8;
+    dlSCH.lenRB:=23;
+  }
+  genTemplateSubframe(cellGrid, 4, tx, true);
+  addDLSCHToSubframe(cellGrid, dlSCH, tx);
+  emits cellGrid;
+
+
+};
+
+let comp main = read[int] >>> test_addDLSCHToSubframe() >>> write
+
+
+

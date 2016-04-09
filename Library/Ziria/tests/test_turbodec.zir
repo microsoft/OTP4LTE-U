@@ -1,0 +1,101 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include <externals.blk>
+#include <LTE_lib.zir> 
+
+fun comp demod() {
+  repeat{
+    let (one:int8) = 7;
+    let (zero:int8) = -7;
+    x <- take;
+    if (x=='1) then {
+      emit one;
+    } else {
+      emit zero;
+    }
+  };
+};
+
+
+#define PKT_LEN         40
+#define DECODE          decode_40
+#include "../turbodec_template.zir"
+
+#define PKT_LEN         48
+#define DECODE          decode_48
+#include "../turbodec_template.zir"
+
+#define PKT_LEN         56
+#define DECODE          decode_56
+#include "../turbodec_template.zir"
+
+#define PKT_LEN         576
+#define DECODE          decode_576
+#include "../turbodec_template.zir"
+
+#define PKT_LEN         1120
+#define DECODE          decode_1120
+#include "../turbodec_template.zir"
+
+#define PKT_LEN         2432
+#define DECODE          decode_2432
+#include "../turbodec_template.zir"
+
+#define PKT_LEN         3264
+#define DECODE          decode_3264
+#include "../turbodec_template.zir"
+
+#define PKT_LEN         4096
+#define DECODE          decode_4096
+#include "../turbodec_template.zir"
+
+#define PKT_LEN         5440
+#define DECODE          decode_5440
+#include "../turbodec_template.zir"
+
+#define PKT_LEN         6144
+#define DECODE          decode_6144
+#include "../turbodec_template.zir"
+
+
+
+
+let comp main = read[bit] >>> demod() >>> 
+{
+  decode_576();
+  decode_3264();
+  decode_48();
+  decode_4096();
+  decode_5440();
+  decode_6144();
+  decode_40();
+  decode_2432();
+  decode_56();
+  decode_1120()
+} >>> write
+
+

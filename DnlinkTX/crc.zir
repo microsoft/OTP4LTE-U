@@ -1,0 +1,197 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include <bits.blk>
+
+fun crc(L : int16, g : arr int, input : arr bit, inlen : int16) {
+var r : arr[24] bit := {'0, '0, '0, '0, '0, '0, '0, '0, 
+                        '0, '0, '0, '0, '0, '0, '0, '0, 
+                        '0, '0, '0, '0, '0, '0, '0, '0};
+
+  -- This will not LUT
+  for i in [0, inlen/8+1] {
+    for j in [0, 8] {
+      let ii = i*8+j in
+      if (ii < inlen) then 
+      {
+        let inv = input[ii] ^ r[L-1];
+
+        for k in [0, length(g)] {
+          r[g[k]] := inv ^ r[g[k]];
+        }
+
+        for l in [0, L-1] {
+          r[L-1-int16(l)] := r[L-1-int16(l)-1];
+        }
+        r[0] := inv;
+      }
+    }
+  }
+
+  return r;
+};
+
+
+fun crc16(input : arr bit, inlen : int16) {
+  let L = 16 in
+  let g = {4, 11} in 
+  let r = crc(L, g, input, inlen) in
+  -- TODO: Here we need to invert bits once we change endianness
+  -- return r[0,16];
+  return invert_bits(r[0,16]);
+};
+
+
+
+{-
+fun crc24a_old(input : arr bit, inlen : int16) {
+  let L = 24 in
+  let g = {0, 2, 3, 4, 5, 6, 9, 10, 13, 16, 17, 22} in 
+  let r = crc(L, g, input, inlen) in
+  -- TODO: Here we need to invert bits once we change endianness
+  -- return r[0,24];
+  return invert_bits(r[0,24]);
+};
+-}
+
+
+
+
+
+
+
+fun crc24a(input : arr bit, inlen : int16) {
+var r0 : arr[8] bit := {'0, '0, '0, '0, '0, '0, '0, '0};
+var r1 : arr[8] bit := {'0, '0, '0, '0, '0, '0, '0, '0};
+var r2 : arr[8] bit := {'0, '0, '0, '0, '0, '0, '0, '0};
+var r : arr[24] bit;
+var inv : arr[8] bit;
+var inv1 : arr[8] bit;
+let L = 24;
+let g = {0, 2, 3, 4, 5, 6, 9, 10, 13, 16, 17, 22};
+
+
+  -- Manual LUTting
+  for i in [0, inlen/8] {
+    inv := input[i*8, 8];
+
+    -- inputs:
+    -- inv : arr[8] bit
+    -- r2 : arr[8] bit
+    -- outputs: 
+    -- inv : arr[8] bit
+    -- r2 : arr[8] bit
+    -- LUT size 128 KB
+    for j in [0, 8] {
+      inv[j] := inv[j] ^ r2[7-j];
+      for k in [0, length(g)] {
+        let (ind : int16) = (g[k] - j) - 16 in
+        if (ind >= 0) then {
+          r2[ind] := inv[j] ^ r2[ind];
+        }
+      }
+    }
+
+    inv1 := invert_bits(inv); 
+
+    -- inputs:
+    -- imm : arr[8] bit
+    -- r1 : arr[8] bit
+    -- outputs: 
+    -- r1 : arr[8] bit
+    -- LUT size 64 KB
+    let imm = inv;
+    for j in [0, 8] {
+      for k in [0, length(g)] {
+        let (ind : int16) = (g[k] - j) - 8 in
+        if (ind >= 0 && ind < 8) then {
+          --print (g[k]-j)+8, " ";
+          r1[ind] := imm[j] ^ r1[ind];
+        }
+      }
+    }
+
+
+    -- inputs:
+    -- imm : arr[8] bit
+    -- r0 : arr[8] bit
+    -- outputs: 
+    -- r0 : arr[8] bit
+    -- LUT size 64 KB
+    for j in [0, 8] {
+      for k in [0, length(g)] {
+        let (ind : int16) = (g[k] - j) in
+        if (ind >= 0 && ind < 8) then {
+          r0[ind] := imm[j] ^ r0[ind];
+        }
+      }
+    }
+
+
+    -- inputs:
+    -- imm : arr[8] bit
+    -- inv1 : arr[8] bit
+    -- outputs: 
+    -- inv1 : arr[8] bit
+    -- LUT size 64 KB
+    for j in [0, 8] {
+      for k in [0, length(g)] {
+        let (ind : int16) = (g[k] - j) + 8 in
+        if (ind >= 0 && ind < 8) then {
+          inv1[ind] := imm[j] ^ inv1[ind];
+        }
+      }
+    }
+
+
+    r2 := r1;
+    r1 := r0;
+    r0 := inv1;
+  }
+
+  r[0,8] := r0;
+  r[8,8] := r1;
+  r[16,8] := r2;
+
+
+  -- The remainder is small and no benefit from LUTtting
+  if (inlen % 8) > 0 then {
+    for j in [0, inlen % 8] {
+      let ii = (inlen/8)*8+j;
+      let inv = input[ii] ^ r[L-1];
+      for k in [0, length(g)] {
+        r[g[k]] := inv ^ r[g[k]];
+      }
+
+      for l in [0, L-1] {
+        r[L-1-int16(l)] := r[L-1-int16(l)-1];
+      }
+      r[0] := inv;
+    }
+  }
+
+  return invert_bits(r);
+};

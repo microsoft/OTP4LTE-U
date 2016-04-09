@@ -1,0 +1,59 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include <externals.blk>
+#include <v_correlate.blk>
+
+-- let comp main = read[complex16] >>> times 30000000{ x<-take; emit x} >>> write [complex16]
+
+
+-- Start dumping waveform when energy is higher than threshold
+fun comp process() {
+var found : bool := false; 
+var cnt : int := 0;
+
+  let sample_len = 30000000;
+  let threshold = 700000;    -- Seems to be the right threshold for sdr-rx-gain=20
+
+  until (found) {
+    x<-takes 16; 
+    let c = v_correlate(x, x);
+    if (c.re > threshold) then {
+      emits x;
+      do{
+        found := true;
+        println "Found, cnt=", cnt, ", c=", c, ", thr=", threshold;
+      };
+    }
+    do{cnt := cnt + 1};
+  }
+  times (sample_len/16) { 
+    x<-takes 16;
+    emits x;
+  }
+}
+
+let comp main = read[complex16] >>> process() >>> write

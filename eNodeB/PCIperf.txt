@@ -1,0 +1,41 @@
+samples : SoraURadioTransferEx : SoraURadioTx
+65536 : 1164108 ns : 15us
+32768 : 596799 ns : 15us
+16384 : 315891 ns : 15us
+8192 : 171849 ns : 15us
+4096 : 100918 ns : 15us
+
+
+
+TX/RX MAC timing difference
+TX-sora-tx-buffer-size, TX-cmd-fifo-queue-size, TX-no-tx-bufs, TXtime - RXtime
+
+32768, 16, 16, (925,6)-(922,1) = 35ms
+32768,  8,  8, (412,0)-(410,1) = 19ms
+16384,  8,  8, (273,2)-(272,1) = 9ms		-- Unstable with regular scheduling
+
+
+
+Queue size disributions for different parameters
+Buf/PC/FPGA
+
+32K/16/16
+samp_PC_queue: 0 0 0 0 0 0 0 0 0 0 0 1 262 811 3629 0 0
+samp_FPGA_queue: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4703
+
+8K/16/16
+samp_PC_queue: 0 2 12 454 353 452 741 720 931 871 917 1120 1065 929 10242 0 0
+samp_FPGA_queue: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 18809
+
+8K/4/16
+samp_PC_queue: 7625 976 10206 1 0
+samp_FPGA_queue: 0 0 0 0 0 1 2 73 453 488 331 722 1034 709 988 931 13076
+
+8K/16/4
+samp_PC_queue: 0 0 8 410 379 469 744 645 1013 820 948 1153 1053 1008 10159 0 0
+samp_FPGA_queue: 0 0 0 0 18809
+
+4K/16/16
+samp_PC_queue: 4116 2569 766 818 851 960 1115 1173 1161 1001 1058 812 963 992 19262 0 0
+samp_FPGA_queue: 0 0 0 7 4 5 22 267 348 461 473 366 437 481 718 813 33215
+>>>>>>> e9c3728d9b23700bc5332055095e83aa1ce93a61

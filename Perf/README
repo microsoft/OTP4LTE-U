@@ -1,0 +1,9 @@
+This folder contains info about performance evaluation of LTE against different Ziria releases. 
+
+The folder contains script files:
+- process.awk: used to generate summary from perf_*.txt files
+
+Results files are in Results folder:
+- perf_<ziria_commit>.txt: average performance for each perf test, usually 2 repetitions, to be processed by process_awk
+- tx_sample<ziria_commit>.txt: CDF of sample process time for eNodeB/tx
+- rx_sample<ziria_commit>.txt: CDF of sample process time for eNodeB/rx

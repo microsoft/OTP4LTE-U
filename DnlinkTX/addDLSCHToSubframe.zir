@@ -1,0 +1,114 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <externals.blk>
+#include "definitions.zir"
+#include "configureDCI1A.zir"
+#include "configurePDSCH.zir"
+#include "dcch.zir"
+#include "dci.zir"
+#include "dlsch.zir"
+#include "pdcch.zir"
+#include "pdsch.zir"
+#include "addPDSCHToSubframe.zir"
+
+
+-- Add a DL-SCH packet to a subframe
+-- TODO: PDCCH is currently hard-coded
+fun comp addDLSCHToSubframe(var cellGrid : arr complex16, var dlSCH : struct MACDLPacket, tx : struct TXParams) {
+var dst_ind : int16;
+var src_ind : int16;
+var bufb2 : arr[MAX_BIT_MSG_SIZE] bit;
+var bufb2_len : int16;
+var bufc : arr[MAX_BIT_MSG_SIZE] complex16;
+var bufc_len : int16;
+
+     
+    let d = configureDCI1A(NDLRB, dlSCH.lenRB, dlSCH.startRB, dlSCH.len, dlSCH.RV, dlSCH.HARQNo, dlSCH.NDI, dlSCH.RNTI);
+    let dcibits = dci(d);
+
+    -- Currently use CCE4 for Dnlink
+    -- emits dcch(dcibits, dlSCH.RNTI) >>> pdcch(dlSCH.subframe, 0, tx) >>> 
+    emits dcch(dcibits, dlSCH.RNTI) >>> pdcch(dlSCH.subframe, 4, tx) >>> 
+    repeat {
+      pdcch_symbols <- takes 36;
+
+      -- PDCCH index is currently calculated in Matlab and hardcoded
+      -- TODO: Write a general one
+      -- Currently use CCE4 for Dnlink
+      --let pdcchi = {1216, 1217, 1218, 1219, 1064, 1065, 1066, 1067, 1368, 1369, 1370, 
+      --              1371, 1592, 1593, 1594, 1595, 696, 697, 698, 699, 546, 547, 549, 
+      --              550, 1440, 1441, 1442, 1443, 904, 905, 906, 907, 0, 1, 3, 4} in 
+      let pdcchi = {1296, 1297, 1298, 1299, 1148, 1149, 1150, 1151, 844, 845, 846, 
+                    847, 1504, 1505, 1506, 1507, 600, 601, 602, 603, 1048, 1049, 1050, 
+                    1051, 1352, 1353, 1354, 1355, 1576, 1577, 1578, 1579, 1272, 1273, 1274, 1275} in 
+      do {
+        for i in [0, 36] {
+          cellGrid[pdcchi[i]] := pdcch_symbols[i];
+        }
+      };
+    }
+
+
+    let sched = configurePDSCH(NDLRB, tx.CellRefP, d, dlSCH.RNTI);
+
+    -- Count number of encoded bits that can be send given schedule dlSCH 
+    -- (function defined in addPDSCHToSubframe)
+    let outlen = countPDSCHToSubframe(sched, dlSCH.frame, dlSCH.subframe, tx);
+
+    do {
+      -- Invert data here, because Ziria bit ordering is different from LTE
+      -- TODO: Remove once we change Ziria's bit ordering
+      for i in [0, dlSCH.len/8] {
+        var b : arr[8] bit;
+        b := dlSCH.data[i*8,8];
+        b := invert_bits(b);
+        dlSCH.data[i*8,8] := b;
+      }
+      bufb2 := dlsch(dlSCH.data, dlSCH.len, outlen, d.RV);
+      bufc_len := 0
+    };
+
+    -- There is no guarantee that outlen is in bytes, since it comes from TBS table (7.1.7 in 36.213)
+    -- But we want to keep vectorized in bytes (8s), for speed. So we emit one more extra byte at the end,
+    -- in case it is needed. The extra bits will be ignored as addPDSCHToSubframe takes as many as it needs
+    for i in [0, outlen/8+1] emits bufb2[i*8, 8]
+      >>> pdsch(dlSCH.subframe, dlSCH.RNTI, d.Modulation, tx) >>> 
+      repeat {
+        pdsch_symbol <- take;
+
+        do {
+          bufc[bufc_len] := pdsch_symbol;
+          bufc_len := bufc_len + 1;
+        }
+      };
+
+    do {addPDSCHToSubframe(cellGrid, bufc, sched, dlSCH.frame, dlSCH.subframe, tx)};
+};
+
+
+

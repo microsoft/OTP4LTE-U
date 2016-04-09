@@ -1,0 +1,9 @@
+#pragma once
+int test_mac_tx_out_queue();
+int test_mac_msg_parsing();
+int test_mac_txrx_msg();
+int test_mac_tx_frame();
+int test_sibs();
+int test_mac_tx_MCS();
+int test_mac_tx_helpers();
+int test_mac_dutycycle();

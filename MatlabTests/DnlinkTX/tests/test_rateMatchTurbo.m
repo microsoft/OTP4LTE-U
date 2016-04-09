@@ -1,0 +1,56 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% MIT License
+%
+% Copyright (c) 2016 Microsoft
+%
+% Permission is hereby granted, free of charge, to any person obtaining a copy
+% of this software and associated documentation files (the "Software"), to deal
+% in the Software without restriction, including without limitation the rights
+% to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+% copies of the Software, and to permit persons to whom the Software is
+% furnished to do so, subject to the following conditions:
+%
+% The above copyright notice and this permission notice shall be included in
+% all copies or substantial portions of the Software.
+%
+% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+% IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+% AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+% THE SOFTWARE.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+addpath ..
+
+x = repmat([0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0]', 1000, 1);
+m = []; 
+
+dk = reshape(x(1:24), 8, 3);
+E = 10; 
+m = [m; rateMatchTurbo(dk, E, 0)];
+
+dk = reshape(x(24+(1:24)), 8, 3);
+E = 100; 
+m = [m; rateMatchTurbo(dk, E, 2)];
+
+dk = reshape(x(24*2+(1:72)), 24, 3);
+E = 60; 
+m = [m; rateMatchTurbo(dk, E, 1)];
+
+dk = reshape(x(24*2+72+(1:72)), 24, 3);
+E = 600; 
+m = [m; rateMatchTurbo(dk, E, 0)];
+
+ind = 24*2+2*72;
+inlen = 2508;
+dk = reshape(x(ind+(1:inlen)), inlen/3, 3);
+E = 5796; 
+m = [m; rateMatchTurbo(dk, E, 0)];
+
+f = fopen('test_rateMatchTurbo.outfile.ground', 'w');
+fprintf(f,'%d,', m);
+fclose(f);

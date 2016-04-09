@@ -1,0 +1,132 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once 
+
+#include <externals.blk>
+#include <v_correlate.blk>
+#include <abs.blk>
+#include <sum.blk>
+#include "preambleTable.zir"
+
+
+-- 64 preambles is too long and causes (invisible) RX queues to overflow
+-- #define NUM_PREAMBLES 64
+#define NUM_PREAMBLES 4
+
+
+struct PRACHInfo = { 
+  index : int16;
+  offset : int16;
+  corr : int32
+}
+
+
+
+fun detectPRACH_table() {
+  var preambleTable : arr[840*NUM_PREAMBLES] complex16;
+  for k in [0,length(preambleTable)] {
+    preambleTable[k] := complex16{re = preambleTableReal[k]; im = preambleTableImag[k]}
+  };
+
+  return preambleTable;
+}
+
+
+
+fun detectPRACH(xF : arr [1536] complex16, preambleTable : arr[840*NUM_PREAMBLES] complex16) {
+  var index : int16 := -1;
+  var offset : int16;
+  var xFs : arr[840] complex16; -- Aligned on multiple of 4, so 840 not 839
+  var bestDetVal : int := 300000;
+  var xD : arr[840] complex16;
+  var xDp : arr[840] complex16;
+  var xD2 : arr[840] complex16;
+
+  var xDs : arr[840] complex16;
+  var xD2s : arr[840] complex16;
+  var xDsp : arr[840] complex16;
+
+  var xDdiff : arr[838] complex16;
+
+  -- Extract the 839 subcarriers.
+  copy_complex16(xFs[0,419], xF[1117,419], 419);
+  copy_complex16(xFs[419,420], xF[0,420], 420);
+      
+  -- Compare with each preamble.
+  for k in [0,NUM_PREAMBLES] {
+
+    -- This is a hack. We need some kind of AGC here
+    v_mul_complex16(xD, xFs, preambleTable[840*k,840], 10);
+       
+    --NOTE: xD[1, 838] is not 16-bit aligned, and v_* are SSE-based
+    --so the call below will cause a segmentation error. 
+    --We copy to an alignes location instead
+    xDp[0,838] := xD[1,838];
+    v_sub_complex16(xD2, xDp, xD);
+
+    -- Use a shifted version, because of the precision        
+    v_shift_right_complex16(xDs, xD, 5);
+    v_shift_right_complex16(xD2s, xD2, 5);
+    let xDpow = v_correlate(xDs, xDs); -- sum of 839 22bit samples, under 32 bit, further 10 bits dropped
+    let xD2pow = v_correlate(xD2s, xD2s); -- sum of 839 22bit samples, under 32 bit
+
+    -- 32 bit / 22 bit, 10 bit result
+    --let d = if ((xDpow.re >> 10) > 1) then xD2pow.re / (xDpow.re >> 10) else xD2pow.re;
+    let d = if (xDpow.re > 1) then int32((int64(xD2pow.re) << (20-0)) / int64(xDpow.re)) else xD2pow.re << 20;
+
+    v_conj_mul_complex16(xDdiff, xDp[0,838], xD[0, 838], 9);
+    let sumAngle = sum_complex16_complex32(xDdiff);
+    let meanAngle = complex16{re=int16(sumAngle.re/838); im=int16(sumAngle.im/838)};
+
+    -- TODO: Here, atan2_int16 is not the same as Bartosz' angle16bitBW 
+    -- but the timing seems to work. Double-check.
+    let angleTime = atan2_int16(meanAngle.im, meanAngle.re);
+
+        
+    --let xDdiff = v_correlate(xDp, xD);
+    --let meanAngle = complex16{re = int16((xDdiff.re >> 9) / 838); im = int16((xDdiff.im >> 9) / 838)};
+    --let angleTime = atan2_int16(meanAngle.im, meanAngle.re);
+    let o = ((1 << 14) + 12288 * angleTime) >> 15;
+
+--    if (k == 20) then {
+--        println k, " ", xDpow, " ", xD2pow, " ", sumAngle, " ", meanAngle, " ", angleTime, " ", o, " ", d;
+        --println xD[0, 10];
+        --println xD2[0,10];
+        --println xDdiff[0, 10];
+--    }
+    
+    if (d < bestDetVal) then {
+      bestDetVal := d;
+      index := int16(k);
+      offset := o;
+    }
+  };
+
+  return PRACHInfo{index = index; offset = offset; corr = bestDetVal};
+};
+
+

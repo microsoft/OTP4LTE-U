@@ -1,0 +1,47 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+fun comp DECODE() {
+var input1:arr[6520] int8;
+var input2:arr[6520] int8;
+var input3:arr[6520] int8;
+
+var output:arr[6144] bit;
+
+  #define PKT_LEN_PAD     (PKT_LEN+4)
+  {
+  x<-takes PKT_LEN_PAD*3;
+  do{
+    -- Aligned packing
+    input1[0, PKT_LEN_PAD] := x[0, PKT_LEN_PAD];
+    input2[0, PKT_LEN_PAD] := x[PKT_LEN_PAD, PKT_LEN_PAD];
+    input3[0, PKT_LEN_PAD] := x[2*PKT_LEN_PAD, PKT_LEN_PAD];
+  };
+  emits deturbo(input1[0, PKT_LEN_PAD], input2[0, PKT_LEN_PAD], input3[0,PKT_LEN_PAD]);
+  } >>> { x <- takes PKT_LEN; emits x; repeat { x<-take; return()}}
+}
+
+

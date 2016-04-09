@@ -1,0 +1,110 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include "definitions.zir"
+#include "cellRS.zir"
+#include "sss.zir"
+#include "pss.zir"
+#include "cfi.zir"
+#include "pcfich.zir"
+#include "pcfich_regs.zir"
+#include "phich.zir"
+#include "dcch.zir"
+#include "pdcch.zir"
+
+
+-- Fill the cellGrid with reference symbols for subframe <subframe>
+-- This cellGrid further serves as a template to be filled with data and sent
+-- cellGrid is assumed to have size (ndlrb*12)*14 or larger, 
+-- packed so that adjacent OFDM subcarriers are adjacent in memory
+--
+-- Use addACK == 1 to add hard-coded ACKs to each frame
+--
+-- Note: This is a computer since we want to use qpsk and scramble_gold which are computers
+-- other than that, the whole thing could have been in imperative code
+fun comp genTemplateSubframe(var cellGrid : arr complex16, subframe : int16, tx : struct TXParams, addACK : bool) {
+var dst_ind : int16;
+var src_ind : int16;
+var cnt : int16;
+
+    -- System parameters
+    let (noSubCarrier : int32) = NDLRB * 12;
+    let tx_pss = ((subframe % 5) == 0);
+
+    do {zero_complex16(cellGrid)};
+
+    -- Fill the grid with RS symbols
+    do {cellRS(cellGrid, tx.NCellID, subframe, NDLRB)};
+
+    if tx_pss then
+    {
+      let (ssSubcarriersStart : int32) = (NDLRB * 6 - 31);
+      let sssSubcarriersStart = noSubCarrier * 5 + ssSubcarriersStart;
+      let pssSubcarriersStart = noSubCarrier * 6 + ssSubcarriersStart;
+
+      sssSeq <- sss(tx.Nid1, tx.Nid2, subframe);
+      do {
+        cellGrid[sssSubcarriersStart, 62] := sssSeq;
+        cellGrid[pssSubcarriersStart, 62] := pss(tx.Nid2);
+      }
+    }
+
+    -- Add PHICH
+    do{
+      if (addACK) then {
+        let nGroup = 1 in -- Ack subframe 1
+        let nSeq = 0 in   -- Hardcoded for now
+        let ack = 1 in
+        write_phich(cellGrid[0, NDLRB*12], tx.NCellID, subframe, tx.Ng, nGroup, nSeq, ack);
+      }
+    };
+
+
+    emits cfi(tx.CFI) >>> pcfich(subframe, tx.NCellID) >>> 
+    -- This will effectively only repeat once by design, but repeat is needed for type matching
+    repeat {
+      cfi_pcficf <- takes 16;
+
+      do {
+        let cfi_regs = pcfich_regs(tx.NCellID, NDLRB);
+        cnt := 0;
+        for i in [0, 4] {
+          for j in [0, 6] {
+            let crs_k = (tx.NCellID % 3) in 
+            let ind = 6 * int32(cfi_regs[i]) + j in
+            if (int16(ind % 3) != crs_k) then {
+              -- DOUG: modulo should be done in pcfich_regs instead, see latest Matlab
+              cellGrid[ind % noSubCarrier] := cfi_pcficf[cnt];
+              cnt := cnt + 1;
+            }
+          }
+        }
+      }
+    }
+
+
+};

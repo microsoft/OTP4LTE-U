@@ -1,0 +1,128 @@
+
+
+     Standard Specification Version: 3GPP TS36.331 Rel12 V12.3.0
+ Message name: BCCH-DL-SCH-Message
+ Message PDU(27octets):000000FEBF048000185A7A020008000002CBF9560F6E86B57CC100
+
+
+
+             BCCH-DL-SCH-Message:
+               message(BCCH-DL-SCH-MessageType):
+00 0.......    BCCH-DL-SCH-MessageType = 0 :c1
+    .0......     c1 = 0 :systemInformation
+                  SystemInformation:
+    ..0.....       criticalExtensions = 0 :systemInformation-r8
+                    SystemInformation-r8-IEs:
+    ...0....         nonCriticalExtension = 0 :Absent
+    ....0000         No. of sib-TypeAndInfo = 0 :0 + 1 = 1
+00 0.......
+    .0......         sib-TypeAndInfo CHOICE value from = 0 :before Extension marker
+    ..0000..          sib-TypeAndInfo = 0 :sib2
+                       SystemInformationBlockType2:
+    ......0.            Extension of SystemInformationBlockType2 = 0 :Absent
+    .......0            ac-BarringInfo = 0 :Absent
+00 0.......            mbsfn-SubframeConfigList = 0 :Absent
+                        radioResourceConfigCommon(RadioResourceConfigCommonSIB):
+    .0......             Extension of RadioResourceConfigCommonSIB = 0 :Absent
+                         RACH-ConfigCommon:
+    ..0.....              Extension of RACH-ConfigCommon = 0 :Absent
+                          preambleInfo:
+    ...0....               preamblesGroupAConfig = 0 :Absent
+    ....0000               numberOfRA-Preambles = 0 :n4
+                          PowerRampingParameters:
+FE 11......               powerRampingStep = 3 :dB6
+    ..1111..               preambleInitialReceivedTargetPower = 15 :dBm-90
+                          ra-SupervisionInfo:
+                           PreambleTransMax:
+    ......10                PreambleTransMax = 10 :n200
+BF 10......
+    ..111...               ra-ResponseWindowSize = 7 :sf10
+    .....111               mac-ContentionResolutionTimer = 7 :sf64
+04 000.....              maxHARQ-Msg3Tx = 0 :0 + 1 = 1
+                         BCCH-Config:
+    ...00...              modificationPeriodCoeff = 0 :n2
+                         PCCH-Config:
+    .....10.              defaultPagingCycle = 2 :rf128
+    .......0              nB = 2 :oneT
+80 10......
+                         prach-Config(PRACH-ConfigSIB):
+    ..000000              rootSequenceIndex = 0
+00 0000....
+                          PRACH-ConfigInfo:
+    ....0000               prach-ConfigIndex = 0
+18 00......
+    ..0.....               highSpeedFlag = 0 :False
+    ...1100.               zeroCorrelationZoneConfig = 12
+    .......0               prach-FreqOffset = 22
+5A 010110..
+                         PDSCH-ConfigCommon:
+    ......10              referenceSignalPower = 79 :79 - 60 = 19
+7A 01111...
+    .....01.              p-b = 1
+                         PUSCH-ConfigCommon:
+                          pusch-ConfigBasic:
+    .......0               n-SB = 0 :0 + 1 = 1
+02 0.......
+    .0......               hoppingMode = 0 :interSubFrame
+    ..000010               pusch-HoppingOffset = 4
+00 0.......
+    .0......               enable64QAM = 0 :False
+                          UL-ReferenceSignalsPUSCH:
+    ..0.....               groupHoppingEnabled = 0 :False
+    ...00000               groupAssignmentPUSCH = 0
+08 0.......               sequenceHoppingEnabled = 0 :False
+    .000....               cyclicShift = 0
+                         PUCCH-ConfigCommon:
+    ....10..              deltaPUCCH-Shift = 2 :ds3
+    ......00              nRB-CQI = 0
+00 00000...
+    .....000              nCS-AN = 0
+00 00000000              n1PUCCH-AN = 0
+02 000.....
+                         SoundingRS-UL-ConfigCommon:
+    ...0....              SoundingRS-UL-ConfigCommon = 0 :release
+                         UplinkPowerControlCommon:
+    ....0010              p0-NominalPUSCH = 44 :44 - 126 = -82
+CB 1100....
+    ....101.              alpha = 5 :al08
+    .......1              p0-NominalPUCCH = 31 :31 - 127 = -96
+F9 1111....
+                          DeltaFList-PUCCH:
+    ....10..               deltaF-PUCCH-Format1 = 2 :deltaF2
+    ......01               deltaF-PUCCH-Format1b = 1 :deltaF3
+56 01......               deltaF-PUCCH-Format2 = 1 :deltaF0
+    ..01....               deltaF-PUCCH-Format2a = 1 :deltaF0
+    ....01..               deltaF-PUCCH-Format2b = 1 :deltaF0
+    ......10              deltaPreambleMsg3 = 4 :4 - 1 = 3
+0F 0.......
+                         UL-CyclicPrefixLength:
+    .0......              UL-CyclicPrefixLength = 0 :len1
+                        UE-TimersAndConstants:
+    ..0.....             Extension of UE-TimersAndConstants = 0 :Absent
+    ...011..             t300 = 3 :ms400
+    ......11             t301 = 6 :ms1500
+6E 0.......
+    .110....             t310 = 6 :ms2000
+    ....111.             n310 = 7 :n20
+    .......0             t311 = 2 :ms5000
+86 10......
+    ..000...             n311 = 0 :n1
+                        freqInfo:
+    .....1..             ul-CarrierFreq = 1 :Present
+    ......1.             ul-Bandwidth = 1 :Present
+                         ul-CarrierFreq(ARFCN-ValueEUTRA):
+    .......0              ARFCN-ValueEUTRA = 23230
+B5 10110101
+7C 0111110.
+    .......0             ul-Bandwidth = 3 :n50
+C1 11......
+                         AdditionalSpectrumEmission:
+    ..00000.              AdditionalSpectrumEmission = 0 :0 + 1 = 1
+                        timeAlignmentTimerCommon(TimeAlignmentTimer):
+    .......1             TimeAlignmentTimer = 4 :sf2560
+00 00......
+    ..000000  Spare Bits = 000000b
+ 
+ Copyright (C) 2010-2012 3GPP Message Analyser
+ Bug report, wrong parsing result, please e-mail to 3GPP Message Analyser                                                                                                           
+  

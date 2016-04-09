@@ -1,0 +1,126 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include "definitions.zir"
+#include "tbs_table.zir" 
+#include "mcs_table.zir"
+
+--
+-- ndlrb - number of subcarriers
+-- trblklen - data length in bits
+-- rv - redundancy version (36.321. 5.3.1, last paragraph)
+--
+fun configureDCI1A(ndlrb : int16, lenrb : int16, startrb : int16, trblklen : int16, rv : int16, harqno : int16, ndi : int16, rnti : int32) {
+var dci : struct DCIParams;
+var k : int32;
+var ITBS : int16;
+var NPRB : int16;
+
+  dci.DCIFormat := DCI_FORMAT_1A;
+  dci.AllocationType := 0;
+  dci.HARQNo := harqno;
+  dci.NewData := ndi;
+  dci.RV := rv;
+
+  if (lenrb - 1 > ndlrb/2) then
+  {
+    println "DCI allocation error (DCI1A implies Resource allocation 2, 36.213, 7.1.6.3): ndlrb/2 > lenrb - 1, ndlrb = ", ndlrb;
+    error "";
+  }
+  dci.Allocation := DCIAlloc{RIV=ndlrb * (lenrb - 1) + startrb};
+
+  let tbs_table_width = 23;
+
+  if (rnti <= 10 || rnti >= 65534) then { 
+    -- RA/P/SI-RNTI
+    k := 1;
+    NPRB := 0;
+    while (k < length(tbs_table) && tbs_table[k] != trblklen) { 
+      k := k + tbs_table_width;
+    }
+    if (k >= length(tbs_table)) then {
+      k := 2;
+      NPRB := 1;
+      while (k < length(tbs_table) && tbs_table[k] != trblklen) { 
+        k := k + tbs_table_width;
+      }
+    }
+    if (k < length(tbs_table)) then {
+      ITBS := int16(k / tbs_table_width);
+    } else {
+      println "Looking for trblklen=", trblklen, " lenrb=", lenrb;
+      error "tbs_table entry not found!";
+    } 
+
+    -- NB: in this special case TPCPUCCH is not power control
+    -- find really returns NPRB - 1
+    dci.TPCPUCCH := NPRB; 
+    -- find really returns ITBS + 1
+    dci.ModCoding := ITBS; 
+    dci.Modulation := PDSCH_MODULATION_QPSK;
+  } else {
+    -- Power control
+    dci.TPCPUCCH := 1;          -- 0dB
+
+    -- C-RNTI and others
+    -- TODO: dci.NewData must toggle appropriately for dci.HARQNo
+
+    -- TBS table
+    k := int32(lenrb-1);
+    while (k < length(tbs_table) && tbs_table[k] != trblklen) { 
+      k := k + tbs_table_width;
+    }
+
+    if (k < length(tbs_table)) then {
+      ITBS := int16(k / tbs_table_width);
+    } else {
+      println "Looking for trblklen=", trblklen, " lenrb=", lenrb;
+      error "tbs_table entry not found!";
+    } 
+
+    -- MCS table
+    k := 2;
+    while (k < length(mcs_table) && mcs_table[k] != ITBS) { 
+      k := k + 3;
+    }
+
+    if (k < length(mcs_table)) then {
+      dci.ModCoding := mcs_table[int16(k / 3) * 3];
+      let mod = mcs_table[int16(k / 3) * 3 + 1] in 
+      dci.Modulation := 
+        if mod == 2 then PDSCH_MODULATION_QPSK
+        else if mod == 4 then PDSCH_MODULATION_16QAM
+        else PDSCH_MODULATION_64QAM;
+    } else {
+      println "Looking for trblklen=", trblklen, " lenrb=", lenrb;
+      error "mcs_table entry not found!";
+    } 
+    
+  }
+
+  return dci;
+};

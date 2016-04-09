@@ -1,0 +1,66 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <bits.blk>
+
+
+-- Tail biting convolutional encoder is not really streaming
+-- because the state has to be initialized with the tail (end of the message)
+fun convCode(input : arr bit, inlen : int16, var output : arr[MAX_BIT_MSG_SIZE] bit) {
+var s:arr[6] bit := {'0, '0, '0, '0, '0, '0}; 
+var r:arr[24] bit := {'0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0, '0};
+
+  -- We keep our array representation of the inlen x 3 matrice byte aligned
+  let inlenB = if (inlen % 8 > 0) then ((inlen / 8) + 1)*8 else inlen;
+
+  -- TODO: remove invert_bits when you change endianness
+  s := invert_bits(input[inlen-6,6]);
+
+  -- Manual LUTting as we don't yet support it nicely here
+  for i in [0, inlenB/8] {
+    -- The following should be LUTted (check): 
+    -- input 8 bit + state 6 bit, output 24 bits + state 6 bits = 64 KB
+    for j in [0, 8] { 
+      let ii = i*8 + j in
+      if (ii < inlen) then {
+        let b = input[ii];
+        r[j] := b ^ s[1] ^ s[2] ^ s[4] ^ s[5];
+        r[8+j] := b ^ s[0] ^ s[1] ^ s[2] ^ s[5];
+        r[16+j] := b ^ s[0] ^ s[1] ^ s[3] ^ s[5];
+    
+        s[1:5] := s[0:4];
+        s[0] := b;
+      }
+    } 
+    output[8*i,8] := r[0,8];
+    output[inlenB+8*i, 8] := r[8,8];
+    output[2*inlenB+8*i, 8] := r[16,8];
+  }
+
+  return 3 * inlen;
+};
+

@@ -1,0 +1,192 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include "../DnlinkTX/definitions.zir"
+#include "../General/TimingInfo.zir"
+#include "../General/debug.zir"
+
+#include "../DnlinkTX/genTemplateSubframe.zir"
+#include "../DnlinkTX/addDCI0ToSubframe.zir"
+#include "../DnlinkTX/addMIBToSubframe.zir"
+#include "../DnlinkTX/addDLSCHToSubframe.zir"
+#include "../DnlinkTX/modulate.zir"
+
+
+-- Debug printout
+fun printTime(TXframe : int16) {
+  if (TXframe == 1000) then {
+     let time = getRXTime();
+     let sampleCounter = convertTimeInfoToSampleCounter(time);
+     println "TX: frame=", TXframe, ", sub_frame=", 0, 
+             ", RX: frame=", time.frame, ", sub_frame=", time.subFrame, 
+             ", slot=", time.slot, ", symbol=", time.symbol, ", sample=", time.sample, 
+             ", counter=", sampleCounter, 
+             ", DIFF: ", int32(TXframe)*FrameLen - sampleCounter;
+  }
+}
+
+
+
+-- Take DL-SCH packets from the input. Keep sending the frame and schedule the taken packets accordingly
+-- Assumption: packets arrive in order in terms of (frame, subframe) numbering.
+-- Use addACK == 1 to add hard-coded ACKs to each frame
+fun comp dnlinkGenFrame(addACK : bool) {
+var originalCellGrid : arr[10*NDLRB*12*14] complex16;
+var cellGrid : arr[10*NDLRB*12*14] complex16;
+var frame : int16 := 0;
+var packet : struct MACDLPacket;
+
+  let tx = configTX();
+
+  -- Initialize frame once for all
+  for sf in [0, 10]{
+    let subframe = int16(sf);
+    genTemplateSubframe(originalCellGrid[int32(sf)*NDLRB*12*14, NDLRB*12*14], subframe, tx, addACK);
+  }
+
+  -- End of init
+  do {
+    println "TX Init done...";
+  }
+
+-- Add MIB and SIB, which actually depend on the frame
+#if TEST
+  -- Take the first DL-SCH packet
+  (p : struct MACDLPacket) <- take;
+  do{ packet := p };
+#endif
+
+
+#if TEST || MAC_TEST
+  times 3 {
+#else
+  #if PERF
+    -- Run perf eval for 10s (1000 slots x 10ms)
+    times 1000 {
+  #else
+    repeat {
+  #endif
+#endif 
+
+#if TEST || MAC_TEST
+    do {printTime(frame)};
+#endif
+
+    -- Copy original frame to avoid having stale copies of packets
+    -- that can confuse UE (i.e. a wrong SIB at a wrong place)
+    do{copy_complex16(cellGrid, originalCellGrid, 10*NDLRB*12*14)};
+
+    for (subframe : int16) in [0, 10]{
+      let time = TimingInfo{frame=int16(frame); subFrame=int16(subframe); slot=0; symbol=0; sample=0};
+      do {setTXTime(time)};
+
+
+#if !(PERF || TEST || MAC_TEST)
+      -- DEBUG: kill some pilots to enable dongle
+      -- TODO: Fix this bug!
+{-
+      do {
+        if (subframe % 2 != 0 && subframe % 5 != 0 && subframe != 6 && subframe != 7) then {
+           zero_complex16(cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14]);
+        }
+      }
+-}
+#endif
+
+
+      addMIBToSubframe(cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14], frame, subframe, tx);
+
+#if TEST || MAC_TEST
+      do {println "(", frame, ", ", subframe, ")"};
+#endif
+
+
+#if TEST
+      while (packet.frame <= frame && frame - packet.frame < (LTE_NO_FRAMES/2) && packet.subframe <= subframe) {
+#else
+      -- Take the next DL-SCH packet
+      (p : struct MACDLPacket) <- take;
+      do{ packet := p };
+
+      while (packet.packetType != MAC_NO_PKT) {
+#endif
+#if TEST || MAC_TEST
+        -- DEBUG print
+        do {
+          println "Pkt: ", packet.frame, " ", packet.subframe, " ", 
+                           packet.packetType, " ", packet.packetSubtype, " ", 
+                           packet.len, " ", packet.RV, " ", packet.RNTI, " ", packet.data[0, 50];
+        }
+#endif
+
+
+        if (packet.packetType == MAC_DL_CCH && packet.packetSubtype == MAC_DCI0) then {
+          -- Packet is DCI0 type, so just pass the first 27 bits of payload as DCI0 bits
+          -- TODO: Pass the entire packet and parse it inside addDCI0ToSubframe
+          addDCI0ToSubframe(cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14], 
+                            frame, subframe, packet.data[0, 27], tx);
+        }
+        else if (packet.packetType == MAC_DL_EMPTY) then {
+          -- Empty subframe signal (no RS either), corresponds to off cycle in LTE-U
+          do{zero_complex16(cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14])};
+        }
+        else 
+        {
+          do {
+            if (debugPrint(DEBUG_PRINT_PDSCH) && packet.packetSubtype >= MAC_RRC_Setup) then {
+              println "Pkt: ", packet.frame, " ", packet.subframe, " ", 
+                               packet.packetType, " ", packet.packetSubtype, " ", 
+                               packet.len, " ", packet.RV, " ", packet.RNTI, " ", packet.data[0, 50];
+            }
+          }
+
+          -- Schedule the packet
+          addDLSCHToSubframe(cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14], packet, tx);
+        }
+
+        -- Take the next packet
+        (p : struct MACDLPacket) <- take;
+        do{ packet := p };
+      }
+        
+      emits cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14];
+
+
+#if (PERF || TEST || MAC_TEST)
+      -- Simulate time: just copy TX time into RX
+      do {
+        setRXTime(convertSampleCounterToTimeInfo(int32(frame)*FrameLen + int32(subframe)*SubFrameLen));
+      };
+#endif
+
+
+    }
+    do {frame := (frame + 1) % LTE_NO_FRAMES};
+  }
+};
+
+let comp dnlinkPHY = dnlinkGenFrame(true) >>> modulate() 
+

@@ -1,0 +1,112 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include "demodulate.zir"
+#include "equalize.zir"
+#include "deprecode.zir"
+#include "psch_decode.zir"
+#include "interleaverULSCH.zir"
+#include "sch_decode.zir"
+#include "pucch.zir"
+
+#include "../General/timingInfo.zir"
+
+-- Test output
+fun comp output_pkt() {
+  repeat {
+    (pkt : struct MACULPacket)<-take;
+    -- Ziria is slow when operating on bits so we emit in bytes
+    let padded_byte_len = pkt.len / 8 + if (pkt.len % 8 > 0) then 1 else 0;
+    for i in [0, padded_byte_len] {
+      emits pkt.data[i*8, 8];
+    }
+  }  
+}
+
+
+-- NRB here hardcoded to 8, x2 is because of QPSK
+#define CNRB         8
+#define ENC_PKT_LEN  CNRB*12*12*2
+
+
+-- PUCCH parameters
+let ResourceSize = 0;   -- nRB-CQI in SIB2
+let DeltaShift = 3; 
+
+
+-- Some inits are slow so we precalculate
+-- TODO: This has to be calculated before TX/RX sync!!!
+fun init_uplink_params(var params : struct ULRXParams, NCellID : int16) {
+  pucch_init_codes(params.pucch_drs, NCellID, DeltaShift);
+  init_demodulate(params);
+  init_DRS(params, NCellID, CNRB);
+}
+
+
+fun comp uplinkPHY(NCellID : int16, rnti : int32, subframe : int16, startRB : int16, outlen : int16, rv : int16,
+                   params : struct ULRXParams) {
+  demodulate(params) >>> 
+  pucch(subframe, NCellID, DeltaShift, ResourceSize, params) >>> 
+{-
+  repeat { 
+     -- PUCCH boilerplate
+     -- Take one slot
+    (grid : arr complex16) <- takes NULRB * 12;
+    emits grid[12*1, (NULRB-2) * 12];
+  } >>> 
+-}
+  {
+    equalize(NCellID, CNRB, subframe, startRB, params) >>> deprecode(CNRB) >>>  
+    psch_decode(6, ENC_PKT_LEN, rnti, subframe, NCellID) >>> interleaveULSCH(CNRB) >>> 
+    repeat { 
+      x <- takes ENC_PKT_LEN;
+      let pkt = sch_decode(x, int32(outlen), rv);
+      if (pkt.crcOK) then {
+        emit pkt;
+      } 
+#ifdef TEST_BED
+      else {
+        do {
+          -- Currently we send uplink packets only in subframe 4 so this is where we print debug info
+          if (DEBUG_energy && debugPrint(DEBUG_PRINT_ENERGY) && subframe == 4) then {
+            --var str : arr[100] int8;
+            print "(";
+            printTime(getRXTime());
+            println "): uplink energy detected but CRC failed (", DEBUG_energy_level, ").";
+            --bits_to_int8(str, pkt.data[0, 800]);
+            --println "Wrong packet, len=", pkt.len, ": ", str; 
+          }
+        }
+      }
+#endif
+      -- Hack to send PUCCH to MAC
+      if (globalPUCCH.frame != -1) then {
+        emit globalPUCCH;
+      }
+    }
+  }
+}

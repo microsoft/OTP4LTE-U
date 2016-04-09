@@ -1,0 +1,95 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include "definitions.zir"
+#include "mib.zir"
+#include "bch.zir"
+#include "pbch.zir"
+
+-- Fill the cellGrid with reference symbols for subframe <subframe>
+-- This cellGrid further serves as a template to be filled with data and sent
+-- cellGrid is assumed to have size (ndlrb*12)*14 or larger, 
+-- packed so that adjacent OFDM subcarriers are adjacent in memory
+--
+-- Note: This is a computer since we want to use qpsk and scramble_gold which are computers
+-- other than that, the whole thing could have been in imperative code
+-- 
+-- amp: multiplying both I and Q with amp. 
+fun comp addMIBToSubframe(var cellGrid : arr complex16, frame : int16, subframe : int16, tx : struct TXParams) {
+var dst_ind : int32;
+var src_ind : int32;
+
+
+    -- System parameters
+    let noSubCarrier = NDLRB * 12;
+
+    let tx_mib = (subframe == 0);
+
+
+    if tx_mib then 
+    {
+      let mibParams = initMIBParams(tx, frame);
+
+      let mib_bits = mib(NDLRB, tx.PHICHDuration, tx.Ng, mibParams.NFrameDiv4);
+      let mib_bch = bch(mib_bits, tx.CellRefP);
+
+      emits mib_bch >>> pbch(frame, tx.NCellID) >>> 
+      -- This will effectively only repeat once by design, but repeat is needed for type matching
+      repeat { 
+        mib_pbch <- takes 240;
+
+        do {
+          let mib_start = NDLRB * 6 - 36;
+          let crs_k = (tx.NCellID % 3);
+
+          dst_ind := 7*noSubCarrier + mib_start;
+          src_ind := 0;
+
+          for mib_col in [0,4] {
+            if (mib_col < 2) then {
+              -- Columns with pilots
+              copy_complex16(cellGrid[dst_ind, 3], mib_pbch[src_ind, 3], int32(crs_k));
+              for i in [0, 23] {
+                cellGrid[dst_ind + int32(crs_k) + 1 + 3*i, 2] := mib_pbch[src_ind + int32(crs_k) + 2*i, 2];
+              }
+              copy_complex16(cellGrid[dst_ind + int32(crs_k) + 1 + 3*23, 3], 
+                             mib_pbch[src_ind + int32(crs_k) + 2*23, 3], int32(2-crs_k));
+              dst_ind := dst_ind + noSubCarrier;
+              src_ind := src_ind + 24*2;
+
+            } else {
+              -- Columns without pilots
+              cellGrid[dst_ind, 72] := mib_pbch[src_ind, 72];
+              dst_ind := dst_ind + noSubCarrier;
+              src_ind := src_ind + 24*3;
+
+            }
+          }
+        }
+      }
+    }
+};

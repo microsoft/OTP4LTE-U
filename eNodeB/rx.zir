@@ -1,0 +1,317 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+--#define TEST
+#ifdef TEST
+  #include "rx_debug.zir"
+#else
+
+
+#define FFT_1024
+
+
+
+#include <externals.blk>
+#include <bits.blk>
+
+#include "../General/timingInfo.zir"
+#include "../General/debug.zir"
+
+
+#ifdef DUMP
+  #define NO_DUMP_PKTS  5
+  -- #define DUMP_RAR
+  #define DUMP_PUCCH
+
+
+  -- For capturing
+  var captureTime : struct TimingInfo := TimingInfo{frame=0;subFrame=0;slot=0;symbol=0;sample=0};
+#endif
+
+
+-- DEBUG
+var DEBUG_energy : bool := false;
+var DEBUG_energy_level : int32 := 0;
+
+
+#include "../DnlinkTX/definitions.zir"
+#include "../UplinkRX/PRACH/fft3x512.zir"
+#include "../UplinkRX/PRACH/detectPRACH.zir"
+#include "../UplinkRX/downsample.zir"
+
+#ifndef DUMP
+#include "../UplinkRX/uplinkPHY.zir"
+#endif
+
+
+
+-- PRACH CP, currently hard-coded, in samples at @1.92MHz
+-- PRACH algorithm is designed to expect PRACH from half of CP
+#define PRACH_CP        3168
+#define PRACH_SAMPLING  16
+
+--#define MAX_DUMP_BUF    (30720000)
+#define MAX_DUMP_BUF    (3072000)
+
+
+
+#ifdef MAC_TEST
+   #define START_COUNTER        (2*(7*2048+6*144+160))
+#else
+   #define START_COUNTER        0
+#endif
+
+
+
+
+#ifdef FFT_1024
+  #define SAMPLING      2
+#else
+  #define SAMPLING      1
+#endif 
+
+#define NFFT            (2048/SAMPLING)
+#define CP_FIRST        (160/SAMPLING)
+#define CP_OTHER        (144/SAMPLING)
+
+
+
+
+
+fun comp stamp_ulpkt(){
+var pkt:struct MACULPacket;
+  repeat{
+    (x:struct MACULPacket)<-take;
+    do{
+      pkt:=x;
+      let time = getRXTime();
+      let frame = time.frame;
+      let subframe = time.subFrame;
+      pkt.frame := frame;
+      pkt.subframe := subframe;
+
+      -- Invert bits in RX packet
+      for i in [0, pkt.len/8] {
+        pkt.data[i*8,8] := invert_bits(pkt.data[i*8,8])
+      }
+    };
+    emit pkt;
+  }
+}
+      
+    
+    
+
+
+fun comp rx() {
+  var sampleCounter : int32 := START_COUNTER;
+
+  -- Energy detection related
+  var last_sampleCounter : int32 := 0;
+  var last_frame : int16 := -100;
+  var energy_seq : int32 := 0;
+  var detect_seq : int32 := 0;
+
+  -- PRACH related
+  var preambleTable : arr[840*NUM_PREAMBLES] complex16;
+  var prachSeq : arr[1536] complex16;
+  var prachInfo : struct PRACHInfo;
+  var w0Vec : arr[4] complex16;
+  var wVec : arr[1536] complex16;
+  var w2Vec : arr[1536] complex16;
+
+  -- PULSCH related
+  var ul_params : struct ULRXParams;
+  var pulschBuf : arr[2*(NFFT*7+CP_OTHER*6+CP_FIRST)] complex16; 
+
+#ifdef DUMP
+  -- DUMP
+  var RX_test : int16 := -1; 
+  var out_cnt : int16 := 0;
+  var energy_detect : bool;
+#endif
+
+
+  let cell_params = configTX();
+
+
+  -- Init PRACH
+  do{
+    w0Vec := init0_fft3x512 ();
+    wVec := init1_fft3x512 ();
+    w2Vec := init2_fft3x512 ();
+    preambleTable := detectPRACH_table();
+  };   
+
+#ifndef DUMP
+  -- Init PULSCH
+  do{
+    init_uplink_params(ul_params, cell_params.NCellID);
+  };
+  do {
+    println "RX Init done...";
+  };
+#endif
+
+#ifdef DUMP
+--  repeat {
+  until (out_cnt > NO_DUMP_PKTS) {
+#else
+  repeat {
+#endif
+
+    let time = convertSampleCounterToTimeInfo(sampleCounter);
+    do {
+      setRXTime(time);
+    }
+
+    -- Detection for PRACH configuration index 0
+    if (time.frame % 2 == 0 && time.subFrame == 1) then {
+      -- Look for PRACH: currently, in each subframe we either look for PRACH or receive PULSCH
+
+      x <- takes 2*(NFFT*7+CP_OTHER*6+CP_FIRST);
+      do {
+        for i in [0, 1536] {
+          prachSeq[i] := x[PRACH_CP/SAMPLING + i*PRACH_SAMPLING/SAMPLING];
+        }
+
+        let prachFreq = fft3x512(prachSeq, w0Vec, wVec, w2Vec);
+        prachInfo := detectPRACH(prachFreq, preambleTable);
+        if (prachInfo.index > -1) then {
+          detect_seq := detect_seq + 1;
+          setRAPID(int8(prachInfo.index));
+          if debugPrint(DEBUG_PRINT_PRACH) then {
+            printTime(time);
+            println ": PRACH (index=", prachInfo.index, ", offset=", prachInfo.offset, ", corr=", prachInfo.corr, ")";
+            let TXtime = getTXTime();
+            print "TX time PHY: (", TXtime.frame, ", ", TXtime.subFrame, "), ";
+          }
+#ifdef DUMP_RAR
+          if (prachInfo.index == 0) then {
+            -- Write down time when you want to capture data 
+            captureTime := TimingInfo{frame=(time.frame+1)%1024;subFrame=2;slot=0;symbol=0;sample=0};
+          }
+#endif          
+#ifdef DUMP_PUCCH
+          if (prachInfo.index == 0) then {
+            -- Write down time when you want to capture data (RAR is subframe 6, ACK is subrame 0, frame+1)
+            captureTime := TimingInfo{frame=(time.frame+1)%1024;subFrame=8;slot=0;symbol=0;sample=0};
+          }
+#endif          
+        } 
+      }
+    } else {
+      -- Look for PULSCH: currently, in each subframe we either look for PRACH or receive PULSCH
+#ifdef DUMP
+      x <- takes 2*(7*NFFT + CP_FIRST + 6*CP_OTHER);
+      if ((captureTime.frame != 0 || captureTime.subFrame != 0) && 
+          (captureTime.frame == time.frame && captureTime.subFrame == time.subFrame)) then {
+        emits x;
+        do {
+          out_cnt := out_cnt + 1;
+          printTime(getRXTime());
+          println ", Dumped pkt ", out_cnt;
+          captureTime := TimingInfo{frame=0;subFrame=0;slot=0;symbol=0;sample=0};
+        }
+      } 
+
+{- OLD DUMP
+      x <- takes 2*(7*NFFT + CP_FIRST + 6*CP_OTHER);
+      do {
+        energy_detect := false;
+        for i in [0, 10] {
+          let (x100:complex16) = x[1000 + i*100];
+          energy_detect := (energy_detect || abs_int16(x100.re)>500 || abs_int16(x100.im)>500);
+        }
+      }
+
+      if (RX_test >= 0 && ((RX_test+1) % 1024 <= time.frame) && time.subFrame == 2) then {
+        -- emits x;
+        do {
+          -- out_cnt := out_cnt + 1; 
+          printTime(getRXTime());
+          print ", Response, RX_test = ", RX_test;
+          --println ", Dumped pkt ", out_cnt;
+          println ", Samples: ", x[1000,20];
+        };
+        do{RX_test := -1}
+      }
+
+      if (energy_detect) then {
+        emits x;
+        do {
+          println x[1000,20];
+          out_cnt := out_cnt + 1; 
+          printTime(getRXTime());
+          print ", RX_test = ", RX_test;
+          println ", Dumped pkt ", out_cnt;
+        };
+      } 
+-}
+
+#else
+  #ifdef MAC_TEST
+      -- Parameters hardcoded in the test sample
+      #define START_RB  0
+      -- let rv = if (time.subFrame == 0) then 2 else 0;
+      let rv = 0;
+  #else
+      #define START_RB  0
+      -- Now hardcoded to 0 as we use maxHARQ-Msg3Tx=1 in SIB2 so we should never see ACKs
+      --let rv = if (time.subFrame == 0) then 2 else 0;
+      let rv = 0;
+  #endif
+      uplinkPHY(cell_params.NCellID, 64, time.subFrame, START_RB, 208, rv, ul_params) >>> stamp_ulpkt() 
+      -- uplinkPHY(cell_params.NCellID, 64, time.subFrame, START_RB, 1384, rv, ul_params) >>> stamp_ulpkt() 
+#endif
+    }
+
+
+    do {
+      --sampleCounter := (sampleCounter + 2*(NFFT*7+CP_OTHER*6+CP_FIRST)) % maxSampleCounterVal;
+      sampleCounter := (sampleCounter + 2*(2048*7+144*6+160)) % maxSampleCounterVal;
+    }
+
+  }
+
+};
+
+
+
+
+#ifdef FFT_1024
+  #ifdef DUMP
+    let comp main = read >>> downsample() >>> rx() >>> write
+  #else
+    let comp main = read >>> downsample() >>> rx() >>> write[struct MACULPacket]
+  #endif
+#else
+  let comp main = read >>> rx() >>> write[struct MACULPacket]
+#endif
+
+
+-- ifdef TEST
+#endif  

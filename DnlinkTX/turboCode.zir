@@ -1,0 +1,101 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include "definitions.zir"
+
+fun turboCode(input : arr bit, inlen : int16, var output : arr[MAX_BIT_MSG_SIZE] bit) { 
+var reg1 : arr[3] bit := {'0, '0, '0};
+var reg2 : arr[3] bit := {'0, '0, '0};
+var xk   : arr[3] bit := {'0, '0, '0};
+var xk_  : arr[3] bit := {'0, '0, '0};
+var zk   : arr[3] bit := {'0, '0, '0};
+var zk_  : arr[3] bit := {'0, '0, '0};
+
+  -- We keep our array representation of the inlen x 3 matrice byte aligned
+  let inlenp = inlen + 4;
+  let inlenB = if (inlenp % 8 > 0) then ((inlenp / 8) + 1)*8 else inlenp;
+
+  let K = inlen;
+  let table = {3, 10, 7, 12, 19, 42, 7, 16, 7, 18, 11, 20, 5, 22, 11, 24, 7, 26, 41, 84, 103, 90, 15, 32, 9, 34, 17, 108, 9, 38, 21, 120, 101, 84, 21, 44, 57, 46, 23, 48, 13, 50, 27, 52, 11, 36, 27, 56, 85, 58, 29, 60, 33, 62, 15, 32, 17, 198, 33, 68, 103, 210, 19, 36, 19, 74, 37, 76, 19, 78, 21, 120, 21, 82, 115, 84, 193, 86, 21, 44, 133, 90, 81, 46, 45, 94, 23, 48, 243, 98, 151, 40, 155, 102, 25, 52, 51, 106, 47, 72, 91, 110, 29, 168, 29, 114, 247, 58, 29, 118, 89, 180, 91, 122, 157, 62, 55, 84, 31, 64, 17, 66, 35, 68, 227, 420, 65, 96, 19, 74, 37, 76, 41, 234, 39, 80, 185, 82, 43, 252, 21, 86, 155, 44, 79, 120, 139, 92, 23, 94, 217, 48, 25, 98, 17, 80, 127, 102, 25, 52, 239, 106, 17, 48, 137, 110, 215, 112, 29, 114, 15, 58, 147, 118, 29, 60, 59, 122, 65, 124, 55, 84, 31, 64, 17, 66, 171, 204, 67, 140, 35, 72, 19, 74, 39, 76, 19, 78, 199, 240, 21, 82, 211, 252, 21, 86, 43, 88, 149, 60, 45, 92, 49, 846, 71, 48, 13, 28, 17, 80, 25, 102, 183, 104, 55, 954, 127, 96, 27, 110, 29, 112, 29, 114, 57, 116, 45, 354, 31, 120, 59, 610, 185, 124, 113, 420, 31, 64, 17, 66, 171, 136, 209, 420, 253, 216, 367, 444, 265, 456, 181, 468, 39, 80, 27, 164, 127, 504, 143, 172, 43, 88, 29, 300, 45, 92, 157, 188, 47, 96, 13, 28, 111, 240, 443, 204, 51, 104, 51, 212, 451, 192, 257, 220, 57, 336, 313, 228, 271, 232, 179, 236, 331, 120, 363, 244, 375, 248, 127, 168, 31, 64, 33, 130, 43, 264, 33, 134, 477, 408, 35, 138, 233, 280, 357, 142, 337, 480, 37, 146, 71, 444, 71, 120, 37, 152, 39, 462, 127, 234, 39, 158, 39, 80, 31, 96, 113, 902, 41, 166, 251, 336, 43, 170, 21, 86, 43, 174, 45, 176, 45, 178, 161, 120, 89, 182, 323, 184, 47, 186, 23, 94, 47, 190, 263, 480}; -- 36.212 Table 5.1.3-3
+
+  let ind = if (K <= 512) then (K-40)/8 else if (K <= 1024) then 59+(K-512)/16 else if (K <= 2048) then 91+(K-1024)/32 else 123+(K-2048)/64;
+  let f1 = table[2 * ind];
+  let f2 = table[2 * ind + 1];
+  let outlen = 3*(inlen+4);
+
+  for (k : int32) in [0, int32(K)] {
+    -- TODO: Is this interleaving LUTtable? Otherwise it could take time...
+    let cki = input[(int64(f1) * int64(k) + int64(f2) * int64(k)*int64(k)) % int64(K)];
+    -- let in1 = (input(k) + reg1[2] + reg1[3] % 2);
+    -- let in2 = (cki + reg2[2] + reg2[3] % 2);
+    let in1 = input[k] ^ reg1[1] ^ reg1[2];
+    let in2 = cki ^ reg2[1] ^ reg2[2];
+    output[k] := input[k];
+    output[int32(inlenB) + k] := in1 ^ reg1[0] ^ reg1[2];
+    output[int32(inlenB)*2 + k] := in2 ^ reg2[0] ^ reg2[2];
+    reg1[1,2] := reg1[0,2];
+    reg2[1,2] := reg2[0,2];
+    reg1[0] := in1;
+    reg2[0] := in2;
+  }
+
+  -- Termination
+  for k in [0, 3] {
+    let in1 = reg1[1] ^ reg1[2];
+    let in2 = reg2[1] ^ reg2[2];
+    xk[k]  := in1;
+    xk_[k] := in2;
+    zk[k]  := reg1[0] ^ reg1[2];
+    zk_[k] := reg2[0] ^ reg2[2];
+    reg1[1,2] := reg1[0,2];
+    reg2[1,2] := reg2[0,2];
+    reg1[0]   := '0;
+    reg2[0]   := '0;
+  }
+
+--  dk(K+1:end,:) = [xk(1) zk(2) xk_(1) zk_(2);...
+--                   zk(1) xk(3) zk_(1) xk_(3);...
+--                   xk(2) zk(3) xk_(2) zk_(3)]';
+
+  output[K] := xk[0];
+  output[(inlenB) + K] := zk[0];
+  output[(inlenB)*2 + K] := xk[1];
+
+  output[K+1] := zk[1];
+  output[(inlenB) + K + 1] := xk[2];
+  output[(inlenB)*2 + K + 1] := zk[2];
+
+  output[K+2] := xk_[0];
+  output[(inlenB) + K + 2] := zk_[0];
+  output[(inlenB)*2 + K + 2] := xk_[1]; 
+
+  output[K+3] := zk_[1];
+  output[(inlenB) + K + 3] := xk_[2];
+  output[(inlenB)*2 + K + 3] := zk_[2];
+
+  return outlen;
+};

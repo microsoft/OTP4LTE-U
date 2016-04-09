@@ -1,0 +1,68 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include <abs.blk>
+#include "../fft3x512.zir"
+
+fun threshold(x : complex16) {
+{-
+    return complex16{re=if(abs_int16(x.re) > 20) then x.re else 0;
+                     im=if(abs_int16(x.im) > 20) then x.im else 0
+                    };
+-}
+    return complex16{re=x.re + 150; im=x.im + 150};
+
+};
+
+fun comp downsample() {
+  cp <- takes (198/2*16);
+  repeat {
+    x <- takes 16;
+    emit x[0];
+  }
+}
+
+
+fun comp test_fft3x512 () {
+  var w0Vec : arr[4] complex16;
+  var wVec : arr[1536] complex16;
+  var w2Vec : arr[1536] complex16;
+
+  do {
+    w0Vec := init0_fft3x512 ();
+    wVec := init1_fft3x512 ();
+    w2Vec := init2_fft3x512 ();
+  };
+
+  repeat {
+    (x : arr complex16) <- takes 1536;
+    emits fft3x512(x, w0Vec, wVec, w2Vec);
+  }
+};
+
+--let comp main = read >>> test_fft3x512() >>> map threshold >>> write
+let comp main = read >>> downsample() >>> test_fft3x512() >>> map threshold >>> write
+

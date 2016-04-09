@@ -1,0 +1,82 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once 
+#include "../DnlinkTX/definitions.zir"
+
+--function k = interleaverULSCH(nrb)
+--    % TODO: Assumes QPSK, no HARQ, etc
+--    k = reshape(1:2:nrb*2*12*12, 12, [])';    
+    --  1     3     5     7     9    11    13    15    17    19    21    23
+    -- 25    27    29    31    33    35    37    39    41    43    45    47
+    -- 49    51    53    55    57    59    61    63    65    67    69    71
+    -- 73    75    77    79    81    83    85    87    89    91    93    95
+    -- 97    99   101   103   105   107   109   111   113   115   117   119
+    -- ...
+--    k = k(:)';                                
+    -- (1, 25, 49, 73, 97, ...)
+-- This is because of QPSK (we group j+(0,1) together)?
+--    k = [k; k+1];
+    -- 1    25    49    73    97   121   145   169   193   217   241   265     3   ... 
+    -- 2    26    50    74    98   122   146   170   194   218   242   266     4   ...
+    -- ...
+--    k = k(:);
+    -- 1     2    25    26    49    50    73    74    97    98 ...
+--end
+
+
+fun comp interleaveULSCH(nrb : int16) {
+var input : arr[NULRB*12*12*2] int8;
+var output : arr[NULRB*12*12*2] int8;
+var cnt : int16;
+
+  for i in [0, nrb] {
+    x <- takes 2*12*12;
+    do{input[i*2*12*12, 2*12*12] := x};
+  }
+
+  do {
+    cnt := 0;
+    for i in [0, nrb*12*12] {
+      output[2*cnt, 2] := input[2*i, 2];
+
+      cnt := (cnt + 12);
+      if cnt >= (nrb*12*12) then
+      {
+        cnt := cnt % (nrb*12*12) + 1;
+      }
+    }
+  }
+
+  for i in [0, nrb] {
+    emits output[2*i*12*12, 2*12*12];
+  }
+
+}
+
+
+
+    

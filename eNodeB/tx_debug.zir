@@ -1,0 +1,107 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include <externals.blk>
+
+
+-- TODO: Fix this once the same struct can be defined in both tx and rx
+--#include "../General/TimingInfo.zir"
+{-
+fun external setRXTime(counter : int32, frame : int16, subFrame : int16, slot : int16, symbol : int16, sample : int16) : ()
+fun external getRXCounter() : int32
+fun external getRXFrame() : int16
+fun external getRXSubFrame() : int16
+fun external getRXSlot() : int16
+fun external getRXSymbol() : int16
+fun external getRXSample() : int16
+-}
+let SlotLen = (2048 + 160) + 6*(2048+144);
+let SubFrameLen = SlotLen * 2;
+let FrameLen = SlotLen * 2 * 10;
+
+
+
+
+-- Defines precision of trigonometry
+let normCoeff = 1024;
+--let bpsk_mod_amp = 30000;
+let bpsk_mod_amp = 6000;
+
+--#define LEN (1000)
+#define LEN (30720000)
+
+fun comp tx() {
+var buf : arr[LEN] complex16;
+
+{-
+  -- Downsample by 2
+  -- No need to downsample here because ZiriaLTE TX works at 30.72 MHz
+  for i in [0, LEN/32] {
+    (x : arr[32] complex16) <-take;
+    do {
+      for j in [0, 16] {
+        buf[i*16+j] := x[2*j];
+      }
+    }
+  };
+-}
+
+
+  -- No sampling
+  for i in [0, LEN/16] {
+    (x : arr[16] complex16) <-take;
+    do {
+      buf[i*16,16] := x;
+    }
+  };
+
+-- (buf : arr[LEN] complex16) <-take;
+
+
+  -- Generate test sine signal
+{-
+  do {
+    for cnt in [0, LEN/2] {
+      let c = complex16{re=int16(cosine_double_int32(int32(2.0*pi*double(cnt)), normCoeff)*int32(bpsk_mod_amp)/normCoeff);
+                        im=int16(sine_double_int32(int32(2.0*pi*double(cnt)), normCoeff)*int32(bpsk_mod_amp)/normCoeff)};
+      buf[cnt] := c;
+    }
+  }
+-}
+
+  repeat {
+--    emit buf;
+
+    for i in [0, LEN/16] {
+      emit buf[i*16, 16];
+    }
+
+  }
+};
+
+
+let comp main = read >>> tx() >>> write
+

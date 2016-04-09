@@ -1,0 +1,287 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <externals.blk>
+
+
+-- Include macro DEFINEs that are shared between Ziria and C
+#include "macro_def.h"
+
+#include "gold.zir"
+
+
+-- Standard RNTI
+let P_RNTI = 65534;             -- Paging RNTI
+let SI_RNTI = 65535;            -- System Information RNTI
+
+-- Tuned to cover the entire 16-bits range of the TX
+let qpsk_mod_amp = 21213;
+let bpsk_mod_amp = 30000;
+
+
+-- We specify the allowed RNTI ahead of time to be able to precalculate 
+-- gold sequences for PDSCH calculation and speed it up
+#define MAX_RNTI   4
+let (allowed_RNTI : arr[MAX_RNTI] int32) = {P_RNTI, SI_RNTI, 2, 64}
+fun find_RNTI(rnti : int32) {
+var ind : int8 := -1;
+  for i in [0, MAX_RNTI] {
+    if (allowed_RNTI[i] == rnti) then {
+      ind := i;
+    }
+  }
+  if (ind == -1) then {
+    println "RNTI ", rnti, " not found!";
+    error "Exiting..."; 
+  }
+  return ind;
+}
+
+
+
+-- This used to be switched off due to a Ziria bug
+-- but now it is fixed and should be enabled
+#define USE_PRECALCULATED_PDSCH_GOLD    1
+
+
+struct TXParams = {
+  CellRefP : int16;          -- Number of antenna ports
+                             -- WE currently only support 1 antenna
+-- Hardcoded for vectorizer's efficiency
+--  NDLRB : int16;           
+  NCellID : int16;
+-- Passed explicitly, to emphasize dependence
+--  NFrame : int16;
+--  NSubframe: int16;
+  Ng : int16;                -- TODO: Make this enum (NG_1_6, NG_1_2, NG_1, NG_2)
+  PHICHDuration : int16;     -- TODO: Make this enum (PHICH_Normal, ...)
+  CFI : int16;
+  Nid1 : int16;
+  Nid2 : int16
+
+#ifdef USE_PRECALCULATED_PDSCH_GOLD
+  ;
+  -- Cached precalculated structures for performance
+  pdcch_gold : arr[MAX_PDCCH_GOLD_SEQUENCE_LEN*10] bit;
+  pdsch_gold : arr[MAX_GOLD_SEQUENCE_LEN*10*MAX_RNTI] bit
+#endif
+};
+
+
+struct MIBParams = {
+-- We hardcode width for vectorizers efficency
+--  NDLRB : int16;
+  NFrameDiv4 : int16;
+  Ng : int16;
+  PHICHDuration : int16
+};
+
+
+struct DCIAlloc = {
+  RIV : int16
+};
+
+
+
+struct DCIParams = {
+  -- TODO: Change to enumerables
+  DCIFormat : int16;
+  AllocationType : int16;
+  HARQNo : int16;
+  NewData : int16;
+  RV : int16;
+  Allocation : struct DCIAlloc;
+  TPCPUCCH : int16;
+  ModCoding : int16;
+  Modulation : int16            -- PDSCH_MODULATION_*
+};
+
+fun printDCI(d : struct DCIParams) {
+  print "DCIFormat:", d.DCIFormat;
+  print " AllocationType:", d.AllocationType;
+  print " HARQNo:", d.HARQNo;
+  print " NewData:", d.NewData;
+  print " RV:", d.RV;
+  print " Allocation.RIV:", d.Allocation.RIV;
+  print " TPCPUCCH:", d.TPCPUCCH;
+  print " MCS:", d.ModCoding;
+  println " Modulation:", d.Modulation;
+};
+
+
+
+
+
+
+
+struct PDSCHParams = {
+  RNTI : int32;                         -- This has to be int32 since we don't have unsigned int16
+  PRBStart : int16;
+  PRBLen : int16;
+  NLayers : int16;
+  -- TODO: Change to enumerables
+  Modulation : int16;
+  RV : int16;
+  -- TODO: Change to enumerables
+  TxScheme : int16;
+  NTurboDecIts : int16
+};
+
+fun printPDSCH(d : struct PDSCHParams) {
+  print "RNTI: ", d.RNTI;
+  print " PRBStart: ", d.PRBStart;
+  print " PRBLen: ", d.PRBLen;
+  print " NLayers: ", d.NLayers;
+  print " Modulation: ", d.Modulation;
+  print " RV: ", d.RV;
+  print " TxScheme: ", d.TxScheme;
+  print " NTurboDecIts: ", d.NTurboDecIts;
+};
+
+
+
+fun initTXParams(params : struct TXParams) {
+  var outparams : struct TXParams;
+  outparams := params;
+  outparams.Nid1 := params.NCellID / 3; 
+  outparams.Nid2 := params.NCellID % 3;
+
+
+#ifdef USE_PRECALCULATED_PDSCH_GOLD
+  -- Calculate cached precalculated structures for performance
+  for subframe in [0, 10] {
+    let cinitc = (int32(subframe) << 9) + int32(params.NCellID) in
+    let g = gold(cinitc, MAX_PDCCH_GOLD_SEQUENCE_LEN) in
+    outparams.pdcch_gold[MAX_PDCCH_GOLD_SEQUENCE_LEN*subframe, MAX_PDCCH_GOLD_SEQUENCE_LEN] 
+      := g[0, MAX_PDCCH_GOLD_SEQUENCE_LEN];
+
+    for i in [0, MAX_RNTI] {
+      let rnti = allowed_RNTI[i];
+      let cinits = (int32(rnti) << 14) + (int32(subframe) << 9) + int32(params.NCellID);
+      outparams.pdsch_gold[MAX_GOLD_SEQUENCE_LEN*MAX_RNTI*subframe + MAX_GOLD_SEQUENCE_LEN*i, MAX_GOLD_SEQUENCE_LEN] 
+        := gold(cinits, MAX_GOLD_SEQUENCE_LEN);
+    }
+  }
+#endif
+
+  return outparams;
+};
+
+fun initMIBParams(txParams : struct TXParams, frame : int16) {
+  var mibParams : struct MIBParams;
+--  mibParams.NDLRB := NDLRB;
+  mibParams.NFrameDiv4 := frame/4; 
+  mibParams.Ng := txParams.Ng;
+  mibParams.PHICHDuration := txParams.PHICHDuration;
+  return mibParams;
+};
+
+
+fun configTX() {
+  var params : struct TXParams;
+  params.CellRefP := 1;
+  params.NCellID := 11;
+  params.Ng := NG_1;
+  params.PHICHDuration := PHICH_NORMAL;
+  params.CFI := 3;
+
+  -- Init the rest of the parameters
+  return initTXParams(params);
+};
+
+
+
+#ifdef FFT_1024
+  #define NFFT 1024
+#else
+  #define NFFT 2048
+#endif
+
+-- Various parameter related to Uplink receiver
+struct ULRXParams = {
+  -- FFT demodulation
+  halfsc0 : arr[NFFT] complex16;
+  halfsc : arr[NFFT] complex16;
+  phCorr0 : arr[NFFT] complex16;
+  phCorr : arr[NFFT] complex16;
+
+  -- DRS for equalization
+  -- This calculation is currently slow so we precalculate for a fixed number of RB
+  drs : arr[20 * NULRB * 12] complex16;
+
+  -- DRS for PUCCH equalization
+  -- We only use ResourceIdx=0-7
+  -- This calculation is currently slow so we precalculate for a fixed number of RB
+  pucch_drs : arr[84*20*8] complex16
+};
+
+
+
+
+
+
+
+
+
+-- Struct representing a MAC packet, an input to DnlinkTX
+struct MACDLPacket = {
+  frame : int16;                        -- Where to schedule the packet
+  subframe : int16;
+  packetType : int8;                    -- MAC_DL_SCH, etc
+  packetSubtype : int8;                 -- SIB1, SIB2, RAR, ...
+  data : arr[MAX_BIT_MSG_SIZE] bit;     -- message data
+  len : int16;                          -- data length in bits
+  RV : int16;                           -- redundancy version (36.321. 5.3.1, last paragraph)
+  HARQNo : int16;                       -- HARQ channel number
+  NDI : int16;                          -- New data indicator
+  RNTI : int32;                         -- RNTI to be used (this has to be int32 since we don't have unsigned int16)
+  lenRB : int16;                        -- Number of RBs to be used to send the packet
+  startRB : int16                       -- Index of start RB
+};
+
+
+-- Struct representing a MAC packet, an output from UplinkRX
+struct MACULPacket = {
+  frame : int16;                        -- Where to schedule the packet
+  subframe : int16;
+  packetType : int8;                    -- MAC_DL_SCH, etc
+  data : arr[MAX_UL_BIT_MSG_SIZE] bit;  -- message data
+  len : int16;                          -- data length in bits
+  crcOK : bool                          -- CRC passed test
+};
+
+
+
+
+
+fun polar(angle : double, normCoeff : int32) {
+    let scale = 2;
+    return complex16{re=int16(cosine_double_int32(int32(double(normCoeff)*angle), normCoeff)
+                               *int32(bpsk_mod_amp)/normCoeff/scale);
+                     im=int16(  sine_double_int32(int32(double(normCoeff)*angle), normCoeff)
+                               *int32(bpsk_mod_amp)/normCoeff/scale)};
+}

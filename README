@@ -1,0 +1,32 @@
+Current directory structure is as follows:
+
+- DnlinkTX: Ziria files implementing all parts of LTE Downlink transmitter
+  - DnlinkTx/tests: unit tests for DnlinkTX
+
+- MAC: C files that wrap Ziria files to compile into a full eNodeB
+
+- eNodeB: Top-level Ziria files implementing eNodeB and scripts to make it. 
+          Run make here to start eNodeB
+
+- MatlabTests: Various matlab tests that verify Ziria code
+  - MatlabTests/DnlinkTx: Matlab tests for DnlinkTX
+    - MatlabTests/DnlinkTx/tests: unit tests for DnlinkTX
+
+- Perf: Collection of documented performance evaluation results
+
+
+
+*** High-level limitations:
+
+* Uplink:
+  - Uplink packet size is currently limited to 8 RBs. 
+  - The receiver decodes uplink packets in every sub-frame, 
+    regardless of whether something can be send 
+    (depending on whether DCI0 grant was sent)
+  - DCI0 is sent in subframe 0 of each frame. 
+
+* Dnlink:
+  - Currently, Dnlink packets are only sent in subframe 4 of each frame 
+    (hardcoded in mac_tx_callback() in mac_tx.c)
+  - Since we don't have a real-time feedback, we sent RAR in every frame
+    It is hardcoded in subframe RAR_SUBFRAME (==6)

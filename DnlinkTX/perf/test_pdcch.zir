@@ -1,0 +1,98 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include <externals.blk>
+#include "../definitions.zir"
+#include "../configureDCI1A.zir"
+#include "../configurePDSCH.zir"
+#include "../dcch.zir"
+#include "../dci.zir"
+#include "../pdcch.zir"
+
+
+fun comp test_PDCCH() {
+var cellGrid : arr[10*NDLRB*12*14] complex16;
+var bufb : arr[MAX_BIT_MSG_SIZE] bit;
+var bufb_len : int16;
+
+    let tx = configTX();
+
+    let frame = 2;
+    let subframe = 5;
+
+    -- System parameters
+    let noSubCarrier = NDLRB * 12;
+
+    for cnt in [0, 1000] {
+      for sf in [0, 10]{
+
+        let tx_sib1 = true; 
+
+        -- sib = '684c42821910f66e82119246a80000000000';
+        let sib1 = 
+          {'0,'1,'1,'0,'1,'0,'0,'0,'0,'1,'0,'0,'1,'1,'0,'0,'0,'1,'0,'0,'0,'0,'1,'0,'1,'0,'0,'0,'0,'0,'1,'0,'0,'0,'0,'1,
+           '1,'0,'0,'1,'0,'0,'0,'1,'0,'0,'0,'0,'1,'1,'1,'1,'0,'1,'1,'0,'0,'1,'1,'0,'1,'1,'1,'0,'1,'0,'0,'0,'0,'0,'1,'0,
+           '0,'0,'0,'1,'0,'0,'0,'1,'1,'0,'0,'1,'0,'0,'1,'0,'0,'1,'0,'0,'0,'1,'1,'0,'1,'0,'1,'0,'1,'0,'0,'0,'0,'0,'0,'0,
+           '0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0};
+
+
+        do {
+          bufb[0, 144] := sib1;
+          bufb_len := 144;
+        }
+       
+        let k = if tx_sib1 then ((frame/2) % 4) 
+                           else 0;                -- TODO: 36.321 5.3.1 last para; safe to hard-code 0 for our scheduler
+
+        let rv = (ceil_int16(3.0 * double(k) / 2.0) % 4);
+
+       
+        let rnti = 65535;               -- SI-RNTI
+        let d = configureDCI1A(NDLRB, 12, 0, bufb_len, rv, 0, rnti);
+        let dcibits = dci(d);
+
+        emits dcch(dcibits, rnti) >>> pdcch(subframe, 0, tx) 
+        >>> repeat {
+          pdcch_symbols <- takes 36;
+
+          -- PDCCH index is currently calculated in Matlab and hardcoded
+          let pdcchi = {1216, 1217, 1218, 1219, 1064, 1065, 1066, 1067, 1368, 1369, 1370, 
+                        1371, 1592, 1593, 1594, 1595, 696, 697, 698, 699, 546, 547, 549, 
+                        550, 1440, 1441, 1442, 1443, 904, 905, 906, 907, 0, 1, 3, 4} in 
+          do {
+            for i in [0, 36] {
+              cellGrid[pdcchi[i]] := pdcch_symbols[i];
+            }
+          }
+        }
+
+      }
+    }
+
+}
+
+
+let comp main = read[int] >>> test_PDCCH() >>> write [complex16]

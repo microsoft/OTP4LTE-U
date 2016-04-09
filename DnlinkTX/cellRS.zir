@@ -1,0 +1,64 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include "definitions.zir"
+#include "gold.zir"
+
+-- Fill the cellGrid with reference symbols for subframe <subframe>
+-- cellGrid is assumed to have size (ndlrb*12)*14, 
+-- packed so that adjacent OFDM subcarriers are adjacent in memory
+fun cellRS(var cellGrid : arr complex16, cellID : int16, subframe : int16, ndlrb : int16) {
+
+let vshift = cellID % 6 in 
+
+for slot in [0:1] {
+  let ns = subframe * 2 + int16(slot) in 
+  for lc in [0:1] {
+    let l = int16(lc) * 4 in
+    -- let v = 3 * xor(port, l) in 
+    let v = if l == 0 then 0 else 3 in 
+
+    let ci = 1024*(7*(int32(ns)+1)+int32(l)+1)*(2*int32(cellID)+1)+2*int32(cellID)+1 in -- normal CP
+
+    -- TODO: Why do we need to use MAX_NDLRB here?
+    --let cg = gold(ci, 4*NDLRB-1) in 
+    --let c = cg[0, 4*NDLRB] in 
+    let cg = gold(ci, 4*MAX_NDLRB-1) in 
+    let c = cg[0, 4*MAX_NDLRB-1] in 
+
+
+    for m in [0, 2*ndlrb] { 
+--       let m_ = int16(m) + NDLRB - ndlrb in 
+       let m_ = int16(m) + MAX_NDLRB - ndlrb in 
+       let r = complex16{re=qpsk_mod_amp*(1-2*int16(c[2*m_])); im=qpsk_mod_amp*(1-2*int16(c[2*m_+1]))} in 
+       let k = 6 * int16(m) + (v + vshift) % 6 in 
+       cellGrid[(7*int32(slot)+int32(l))*(int32(ndlrb)*12) + int32(k)] := r;
+    }
+  }
+}
+};
+

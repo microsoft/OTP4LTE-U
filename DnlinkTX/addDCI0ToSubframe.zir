@@ -1,0 +1,68 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include "definitions.zir"
+#include "dcch.zir"
+#include "pdcch.zir"
+
+-- Add uplink scheduling info through DCI0
+fun comp addDCI0ToSubframe(var cellGrid : arr complex16, frame : int16, subframe : int16, 
+                           dci0bits : arr [27] bit, tx : struct TXParams) {
+
+  -- Currently use CCE0 for DCI0
+  --emits dcch(dci0bits, 64) >>> pdcch(subframe, 4, tx) >>> 
+  emits dcch(dci0bits, 64) >>> pdcch(subframe, 0, tx) >>> 
+  repeat {
+    pdcch_symbols <- takes 36;
+
+    -- PDCCH index is currently calculated in Matlab and hardcoded
+    -- TODO: Write a general one
+    -- Currently use CCE0 for DCI0
+    --let pdcchi = {1296, 1297, 1298, 1299, 1148, 1149, 1150, 1151, 844, 845, 846, 
+    --              847, 1504, 1505, 1506, 1507, 600, 601, 602, 603, 1048, 1049, 1050, 
+    --              1051, 1352, 1353, 1354, 1355, 1576, 1577, 1578, 1579, 1272, 1273, 1274, 1275} in 
+    let pdcchi = {1216, 1217, 1218, 1219, 1064, 1065, 1066, 1067, 1368, 1369, 1370, 
+                  1371, 1592, 1593, 1594, 1595, 696, 697, 698, 699, 546, 547, 549, 
+                  550, 1440, 1441, 1442, 1443, 904, 905, 906, 907, 0, 1, 3, 4} in 
+    do {
+      for i in [0, 36] {
+        cellGrid[pdcchi[i]] := pdcch_symbols[i];
+      }
+    };
+  }
+}
+
+
+fun comp addTestDCI0ToSubframe(var cellGrid : arr complex16, frame : int16, subframe : int16, tx : struct TXParams) {
+  let dci0bits = {'0, '0, '0, '0, '1, '0, '1, '0, '1, 
+                  '1, '1, '1, '1, '0, '0, '0, '0, '0, 
+                  '0, '0, '1, '0, '0, '0, '0, '0, '0};
+
+  if (subframe == 0) then {
+    addDCI0ToSubframe(cellGrid, frame, subframe, dci0bits, tx);
+  }
+}

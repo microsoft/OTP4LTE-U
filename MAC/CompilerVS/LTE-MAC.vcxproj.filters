@@ -1,0 +1,245 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="Ziria Header Files">
+      <UniqueIdentifier>{3ee7a1c0-8c1b-4ee8-b462-fbcf0b475eeb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Ziria Source Files">
+      <UniqueIdentifier>{86304d30-9b5f-47e2-8fcd-fbeeafd717ad}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MAC Header Files">
+      <UniqueIdentifier>{1f9e0442-19ae-41e0-bd0c-e8c0380ad132}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MAC Source Files">
+      <UniqueIdentifier>{7f31c06e-566d-4bcb-92b5-c708de1006d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Library">
+      <UniqueIdentifier>{509a045e-cfe6-4adc-8a95-e719d9e42aa8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\driver.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\bit.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\buf_bit.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\buf_numerics8.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\buf_numerics16.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\buf_numerics32.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\ext_arr.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\ext_math.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\numerics.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_ext_visual.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_ip.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_thread_queues.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_threads.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\utils.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\wpl_alloc.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\params.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mac_2threads.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\rx.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tx.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RegisterRW.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sora_radio.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\txrx_sync.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Condition="'$(Mode)'=='LTEU'" Include="..\jsmn.c">
+      <Filter>MAC Source Files</Filter>
+    </ClCompile>
+    <ClCompile Condition="'$(Mode)'=='LTEU'" Include="..\mac_udpsocket.c">
+      <Filter>MAC Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mac_rx.c">
+      <Filter>MAC Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mac_tx.c">
+      <Filter>MAC Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mac_utils.c">
+      <Filter>MAC Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mac_tx_out_queue.c">
+      <Filter>MAC Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\buf_chunk.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Library\C\ChanDecode.c">
+      <Filter>Library</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mac_msg_parsing.c">
+      <Filter>MAC Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mac_tx_helper.c">
+      <Filter>MAC Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\threads.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Condition="'$(Radio)'=='BladeRF'" Include="$(ZIRIA_ROOT)\csrc\bladerf_radio.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_ext_lib.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_ext_viterbi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jsmn.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\bit.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\buf.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\ext_arr.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\ext_math.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\numerics.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_ext_bricks.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_ext_visual.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_ip.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_thread_queues.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_threads.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\types.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\utils.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\wpl_alloc.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\params.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\RegisterRW.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sora_radio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\txrx_sync.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mac.h">
+      <Filter>MAC Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mac_tx_out_queue.h">
+      <Filter>MAC Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mac_structs.h">
+      <Filter>MAC Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_ext_lib_fft.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Library\C\ChanDecode.h">
+      <Filter>Library</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mac_msg_parsing.h">
+      <Filter>MAC Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\common.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\debug.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_ext_lib_fft_coeffs.h">
+      <Filter>Ziria Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\DnlinkTX\macro_def.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\tbs_table.h">
+      <Filter>MAC Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mcs_table.h">
+      <Filter>MAC Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\threads.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\bladerf_radio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\..\Library\C\ChanDecode.txt">
+      <Filter>Library</Filter>
+    </Text>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,57 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <externals.blk>
+#include "../DnlinkTX/definitions.zir"
+#include "../DnlinkTX/gold.zir"
+
+
+fun drs(ns : int16, NCellID : int16, NRB : int16) {
+var r : arr[NULRB * 12] complex16; 
+
+    let fss = NCellID % 30;
+    let cinit = ((NCellID / 30) << 5) + fss;
+    let c = gold(int32(cinit), 8*7*20 + 8);
+    var nPRS : int16 := 0;
+    for k in [0, 8] {
+        nPRS := nPRS + (int16(c[8*7*ns + k]) << k);
+    }
+    let ncs = nPRS % 12;
+    let alpha = 2.0 * pi * double(ncs) / 12.0;
+    let nRsZcTable = {11, 23, 31, 47, 59, 71, 83, 89, 107}; -- TODO: check NRB >= 3, rest of table
+    let nRsZc = nRsZcTable[NRB-1];
+    let u = fss;
+    let q_ = double(nRsZc * (u + 1)) / 31.0;
+    let q = round_int16(q_);
+    let normCoeff = 1000; -- Defines precision of trigonometry
+    for n in [0, NRB * 12] {
+        let m = n % nRsZc;
+        let angle = -pi * double(q * m * (m+1)) / double(nRsZc);
+        r[n] := polar(angle + alpha * double(n), normCoeff);
+    }
+    return r;
+}

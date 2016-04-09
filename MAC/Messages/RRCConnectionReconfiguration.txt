@@ -1,0 +1,533 @@
+Standard Specification Version: 3GPP TS36.331 Rel9 V9.18.0
+Message name: DL-DCCH-Message
+Message PDU(134octets):200603A93800000000103A101700300007888000080242900E08083960331B6BB9A981806B937B4323296B9B1B43BB0B93D01B1B7B68336B7319818188336B1B19818188233B839398280E054008113874040108501808005408360540080A805FB0078880000001A21D43E0980788800009182FA1A21D43E313E0FA81484A064C0284218300
+
+
+
+             DL-DCCH-Message:
+               message(DL-DCCH-MessageType):
+20 0.......    DL-DCCH-MessageType = 0 :c1
+    .0100...     c1 = 4 :rrcConnectionReconfiguration
+                  RRCConnectionReconfiguration:
+                   RRC-TransactionIdentifier:
+    .....00.        RRC-TransactionIdentifier = 0
+    .......0       criticalExtensions = 0 :c1
+06 000.....        c1 = 0 :rrcConnectionReconfiguration-r8
+                     RRCConnectionReconfiguration-r8-IEs:
+    ...0....          measConfig = 0 :Absent
+    ....0...          mobilityControlInfo = 0 :Absent
+    .....1..          dedicatedInfoNASList = 1 :Present
+    ......1.          radioResourceConfigDedicated = 1 :Present
+    .......0          securityConfigHO = 0 :Absent
+03 0.......          nonCriticalExtension = 0 :Absent
+    .0000...          No. of dedicatedInfoNASList = 0 :0 + 1 = 1
+                      DedicatedInfoNAS:
+    .....0..           Range of DedicatedInfoNAS length(octet) = 0 :Up to 127
+    ......11            DedicatedInfoNAS length(octet) = 117
+A9 10101...
+    .....001           DedicatedInfoNAS = 270000000002074202E0060000F110000100485201C101072C06636D773530300D726F6864652D73
+38 00111000                              63687761727A03636F6D066D6E63303031066D636330303104677072730501C0A80102270E808021
+00 00000000                              0A0301000A8106C0A80101500BF600F1100000003443A87C1300F11000012305F43443A87Ch
+00 00000000
+00 00000000
+00 00000000
+10 00010000
+3A 00111010
+10 00010000
+17 00010111
+00 00000000
+30 00110000
+00 00000000
+07 00000111
+88 10001000
+80 10000000
+00 00000000
+08 00001000
+02 00000010
+42 01000010
+90 10010000
+0E 00001110
+08 00001000
+08 00001000
+39 00111001
+60 01100000
+33 00110011
+1B 00011011
+6B 01101011
+B9 10111001
+A9 10101001
+81 10000001
+80 10000000
+6B 01101011
+93 10010011
+7B 01111011
+43 01000011
+23 00100011
+29 00101001
+6B 01101011
+9B 10011011
+1B 00011011
+43 01000011
+BB 10111011
+0B 00001011
+93 10010011
+D0 11010000
+1B 00011011
+1B 00011011
+7B 01111011
+68 01101000
+33 00110011
+6B 01101011
+73 01110011
+19 00011001
+81 10000001
+81 10000001
+88 10001000
+33 00110011
+6B 01101011
+1B 00011011
+19 00011001
+81 10000001
+81 10000001
+88 10001000
+23 00100011
+3B 00111011
+83 10000011
+93 10010011
+98 10011000
+28 00101000
+0E 00001110
+05 00000101
+40 01000000
+08 00001000
+11 00010001
+38 00111000
+74 01110100
+04 00000100
+01 00000001
+08 00001000
+50 01010000
+18 00011000
+08 00001000
+00 00000000
+54 01010100
+08 00001000
+36 00110110
+05 00000101
+40 01000000
+08 00001000
+0A 00001010
+80 10000000
+5F 01011111
+B0 10110000
+07 00000111
+88 10001000
+80 10000000
+00 00000000
+00 00000000
+01 00000001
+A2 10100010
+1D 00011101
+43 01000011
+E0 11100000
+98 10011000
+07 00000111
+88 10001000
+80 10000000
+00 00000000
+09 00001001
+18 00011000
+2F 00101111
+A1 10100001
+A2 10100010
+1D 00011101
+43 01000011
+E3 11100...
+                      RadioResourceConfigDedicated:
+    .....0..           Extension of RadioResourceConfigDedicated = 0 :Absent
+    ......1.           srb-ToAddModList = 1 :Present
+    .......1           drb-ToAddModList = 1 :Present
+13 0.......           drb-ToReleaseList = 0 :Absent
+    .0......           mac-MainConfig = 0 :Absent
+    ..0.....           sps-Config = 0 :Absent
+    ...1....           physicalConfigDedicated = 1 :Present
+                       SRB-ToAddModList:
+    ....0...            No. of SRB-ToAddModList = 0 :0 + 1 = 1
+                        SRB-ToAddMod:
+    .....0..             Extension of SRB-ToAddMod = 0 :Absent
+    ......1.             rlc-Config = 1 :Present
+    .......1             logicalChannelConfig = 1 :Present
+E0 1.......             srb-Identity = 1 :1 + 1 = 2
+    .1......             rlc-Config = 1 :defaultValue
+    ..1.....             logicalChannelConfig = 1 :defaultValue
+                       DRB-ToAddModList:
+    ...0000.            No. of DRB-ToAddModList = 0 :0 + 1 = 1
+                        DRB-ToAddMod:
+    .......0             Extension of DRB-ToAddMod = 0 :Absent
+FA 1.......             eps-BearerIdentity = 1 :Present
+    .1......             pdcp-Config = 1 :Present
+    ..1.....             rlc-Config = 1 :Present
+    ...1....             logicalChannelIdentity = 1 :Present
+    ....1...             logicalChannelConfig = 1 :Present
+    .....010             eps-BearerIdentity = 5
+81 1.......
+                         DRB-Identity:
+    .00000..              DRB-Identity = 0 :0 + 1 = 1
+                         PDCP-Config:
+    ......0.              Extension of PDCP-Config = 0 :Absent
+    .......1              discardTimer = 1 :Present
+48 0.......              rlc-AM = 0 :Absent
+    .1......              rlc-UM = 1 :Present
+    ..001...              discardTimer = 1 :ms100
+                          rlc-UM:
+    .....0..               pdcp-SN-Size = 0 :len7bits
+    ......0.              headerCompression = 0 :notUsed
+                         RLC-Config:
+    .......0              RLC-Config CHOICE value from = 0 :before Extension marker
+4A 01......               RLC-Config = 1 :um-Bi-Directional
+                            UL-UM-RLC:
+                             SN-FieldLength:
+    ..0.....                  SN-FieldLength = 0 :size5
+                            DL-UM-RLC:
+                             SN-FieldLength:
+    ...0....                  SN-FieldLength = 0 :size5
+                             T-Reordering:
+    ....1010                  T-Reordering = 20 :ms100
+06 0.......
+    .000....             logicalChannelIdentity = 0 :0 + 3 = 3
+                         LogicalChannelConfig:
+    ....0...              Extension of LogicalChannelConfig = 0 :Absent
+    .....1..              ul-SpecificParameters = 1 :Present
+                          ul-SpecificParameters:
+    ......1.               logicalChannelGroup = 1 :Present
+    .......0               priority = 2 :2 + 1 = 3
+4C 010.....
+    ...0110.               prioritisedBitRate = 6 :kBps256
+    .......0               bucketSizeDuration = 0 :ms50
+02 00......
+    ..00....               logicalChannelGroup = 0
+                       PhysicalConfigDedicated:
+    ....0...            Extension of PhysicalConfigDedicated = 0 :Absent
+    .....0..            pdsch-ConfigDedicated = 0 :Absent
+    ......1.            pucch-ConfigDedicated = 1 :Present
+    .......0            pusch-ConfigDedicated = 0 :Absent
+84 1.......            uplinkPowerControlDedicated = 1 :Present
+    .0......            tpc-PDCCH-ConfigPUCCH = 0 :Absent
+    ..0.....            tpc-PDCCH-ConfigPUSCH = 0 :Absent
+    ...0....            cqi-ReportConfig = 0 :Absent
+    ....0...            soundingRS-UL-ConfigDedicated = 0 :Absent
+    .....1..            antennaInfo = 1 :Present
+    ......0.            schedulingRequestConfig = 0 :Absent
+                        PUCCH-ConfigDedicated:
+    .......0             tdd-AckNackFeedbackMode = 0 :Absent
+21 0.......             ackNackRepetition = 0 :release
+                        UplinkPowerControlDedicated:
+    .0......             filterCoefficient = 0 :DEFAULT fc4
+    ..1000..             p0-UE-PUSCH = 8 :8 - 8 = 0
+    ......0.             deltaMCS-Enabled = 0 :en0
+    .......1             accumulationEnabled = 1 :True
+83 1000....             p0-UE-PUCCH = 8 :8 - 8 = 0
+    ....0011             pSRS-Offset = 3
+00 0.......            antennaInfo = 0 :explicitValue
+                         AntennaInfoDedicated:
+    .0......              codebookSubsetRestriction = 0 :Absent
+    ..000...              transmissionMode = 0 :tm1
+    .....0..              ue-TransmitAntennaSelection = 0 :release
+    ......00  Spare Bits = 00b
+ 
+ Copyright (C) 2010-2012 3GPP Message Analyser
+ Bug report, wrong parsing result, please e-mail to 3GPP Message Analyser                                                                                                                                                                                                                  
+  
+Standard Specification Version: 3GPP Rel8:Mar 2012
+Message name: EPS mobility management:Attach accept
+Message PDU(117octets):270000000002074202E0060000F110000100485201C101072C06636D773530300D726F6864652D7363687761727A03636F6D066D6E63303031066D636330303104677072730501C0A80102270E8080210A0301000A8106C0A80101500BF600F1100000003443A87C1300F11000012305F43443A87C
+   
+
+             NAS Message:
+              Security header type:
+               (3GPP TS24.301 9.3.1)
+27 0010....    Security header type = 2 :Integrity protected and ciphered
+   ....0111   Protocol Discriminator = 7 :EPS mobility management message
+               EPS mobility management message:
+                Security protected NAS message:
+                 (3GPP TS24.301 8.2.23)
+00 00000000      Message authentication code = 00000000h
+00 00000000
+00 00000000
+00 00000000
+02 00000010      Sequence number = 2
+                 NAS Message:
+                  Security header type:
+                   (3GPP TS24.301 9.3.1)
+07 0000....        Security header type = 0 :Plain NAS message, not security protected
+   ....0111       Protocol Discriminator = 7 :EPS mobility management message
+                  EPS mobility management message:
+42 01000010        Message Type = 66 :Attach accept
+                    Attach accept:
+                     (3GPP TS24.301 8.2.1)
+02 0000....          Spare bits = 0000b
+                     EPS attach result:
+                      (3GPP TS24.301 9.9.3.10)
+   ....0...           Spare bit = 0
+   .....010           EPS attach result value = 2 :combined EPS/IMSI attach
+                     T3412 value:
+                      (3GPP TS24.008 10.5.7.3)
+E0 111.....           Unit = 7 :value indicates that the timer is deactivated
+   ...00000           Timer Value = 0
+                     Tracking area identity list:
+                      (3GPP TS24.301 9.9.3.32)
+06 00000110           Length of Tracking area identity list = 6 byte
+00 0.......           Spare bit(1) = 0
+   .00.....           Type of list(1) = 0 :list of TACs belonging to one PLMN, with non-consecutive TAC values
+   ...00000           Number of elements(1) = 0
+00 0000....           MCC digit 2 = 0
+   ....0000           MCC digit 1 = 0
+F1 1111....           MNC digit 3 = 15
+   ....0001           MCC digit 3 = 1
+10 0001....           MNC digit 2 = 1
+   ....0000           MNC digit 1 = 0
+00 0.......           Spare bit(2) = 0
+   .00.....           Type of list(2) = 0 :list of TACs belonging to one PLMN, with non-consecutive TAC values
+   ...00000           Number of elements(2) = 0
+01 0000....           MCC digit 2 = 0
+   ....0001           MCC digit 1 = 1
+                     ESM message container:
+                      (3GPP TS24.301 9.9.3.15)
+00 00000000           Length of ESM message container = 72 byte
+48 01001000
+52 01010010           L3 Message PDU = 5201C101072C06636D773530300D726F6864652D7363687761727A03636F6D066D6E63303031066D
+01 00000001                            636330303104677072730501C0A80102270E8080210A0301000A8106C0A80101h
+C1 11000001
+01 00000001
+07 00000111
+2C 00101100
+06 00000110
+63 01100011
+6D 01101101
+77 01110111
+35 00110101
+30 00110000
+30 00110000
+0D 00001101
+72 01110010
+6F 01101111
+68 01101000
+64 01100100
+65 01100101
+2D 00101101
+73 01110011
+63 01100011
+68 01101000
+77 01110111
+61 01100001
+72 01110010
+7A 01111010
+03 00000011
+63 01100011
+6F 01101111
+6D 01101101
+06 00000110
+6D 01101101
+6E 01101110
+63 01100011
+30 00110000
+30 00110000
+31 00110001
+06 00000110
+6D 01101101
+63 01100011
+63 01100011
+30 00110000
+30 00110000
+31 00110001
+04 00000100
+67 01100111
+70 01110000
+72 01110010
+73 01110011
+05 00000101
+01 00000001
+C0 11000000
+A8 10101000
+01 00000001
+02 00000010
+27 00100111
+0E 00001110
+80 10000000
+80 10000000
+21 00100001
+0A 00001010
+03 00000011
+01 00000001
+00 00000000
+0A 00001010
+81 10000001
+06 00000110
+C0 11000000
+A8 10101000
+01 00000001
+01 00000001
+50 01010000          GUTI IEI(50h) = 50h :Present
+                      GUTI:
+                       (3GPP TS24.301 9.9.3.12)
+0B 00001011            Length of EPS mobile identity = 11 byte
+F6 1111....            Spare bits = 1111b
+   ....0...            Odd/even indication = 0 :even
+   .....110            Type of identity = 6 :GUTI
+00 0000....             MCC digit 2 = 0
+   ....0000             MCC digit 1 = 0
+F1 1111....             MNC digit 3 = 15
+   ....0001             MCC digit 3 = 1
+10 0001....             MNC digit 2 = 1
+   ....0000             MNC digit 1 = 0
+00 00000000             MME Group ID = 0
+00 00000000
+00 00000000             MME Code = 0
+34 00110100             M-TMSI = 876849276
+43 01000011
+A8 10101000
+7C 01111100
+13 00010011          Location area Identification IEI(13h) = 13h :Present
+                      Location Area Identification:
+                       (3GPP TS24.008 10.5.1.3)
+00 0000....            MCC digit 2 = 0
+   ....0000            MCC digit 1 = 0
+F1 1111....            MNC digit 3 = 15
+   ....0001            MCC digit 3 = 1
+10 0001....            MNC digit 2 = 1
+   ....0000            MNC digit 1 = 0
+00 00000000            Location Area Code = 1
+01 00000001
+23 00100011          MS identity IEI(23h) = 23h :Present
+                      MS identity:
+                       (3GPP TS24.008 10.5.1.4)
+05 00000101            Length of Identity = 5 byte
+F4 1111....            Spare Bits = 1111b
+   ....0...            Odd/even indication = 0 :even
+   .....100            Type of identity = 4 :TMSI/P-TMSI
+34 00110100            TMSI/P-TMSI = 3443A87Ch
+43 01000011
+A8 10101000
+7C 01111100
+                     T3402 value (IEI=17h):Absent
+                     T3423 value (IEI=59h):Absent
+                     Equivalent PLMNs (IEI=4Ah):Absent
+                     Emergency number list (IEI=34h):Absent
+                     EPS network feature support (IEI=64h):Absent
+                     Additional update result (IEI=Fh):Absent
+Copyright (C) 2010-2012 3GPP Message Analyser
+Bug report, wrong parsing result, please e-mail to 3GPP Message Analyser
+
+Standard Specification Version: 3GPP Rel8:Mar 2012
+Message name: Activate default EPS bearer context request
+Message PDU(72octets):5201C101072C06636D773530300D726F6864652D7363687761727A03636F6D066D6E63303031066D636330303104677072730501C0A80102270E8080210A0301000A8106C0A80101
+   
+
+             EPS bearer identity:
+              (3GPP TS24.007 11.2.3.1.5)
+52 0101....   EPS bearer identity = 5 :EPS bearer identity value 5
+   ....0010  Protocol Discriminator = 2 :EPS session management message
+              EPS session management message:
+01 00000001    Procedure transaction identity = 1
+C1 11000001    Message Type = 193 :Activate default EPS bearer context request
+                Activate default EPS bearer context request:
+                 (3GPP TS24.301 8.3.6)
+                 EPS quality of service:
+                  (3GPP TS24.301 9.9.4.3)
+01 00000001       Length of EPS quality of service = 1 byte
+07 00000111       Quality of Service Class Identifier = 7 :QCI 7
+                 Access Point Name:
+                  (3GPP TS24.008 10.5.6.1)
+                  (RFC1035 3.1)
+2C 00101100       Length of Access Point Name = 44 byte
+06 00000110       Length of Lavel(0) = 6
+63 01100011       Access Point Name[0] = 63h : c
+6D 01101101       Access Point Name[1] = 6Dh : m
+77 01110111       Access Point Name[2] = 77h : w
+35 00110101       Access Point Name[3] = 35h : 5
+30 00110000       Access Point Name[4] = 30h : 0
+30 00110000       Access Point Name[5] = 30h : 0
+0D 00001101       Length of Lavel(1) = 13
+72 01110010       Access Point Name[0] = 72h : r
+6F 01101111       Access Point Name[1] = 6Fh : o
+68 01101000       Access Point Name[2] = 68h : h
+64 01100100       Access Point Name[3] = 64h : d
+65 01100101       Access Point Name[4] = 65h : e
+2D 00101101       Access Point Name[5] = 2Dh : -
+73 01110011       Access Point Name[6] = 73h : s
+63 01100011       Access Point Name[7] = 63h : c
+68 01101000       Access Point Name[8] = 68h : h
+77 01110111       Access Point Name[9] = 77h : w
+61 01100001       Access Point Name[10] = 61h : a
+72 01110010       Access Point Name[11] = 72h : r
+7A 01111010       Access Point Name[12] = 7Ah : z
+03 00000011       Length of Lavel(2) = 3
+63 01100011       Access Point Name[0] = 63h : c
+6F 01101111       Access Point Name[1] = 6Fh : o
+6D 01101101       Access Point Name[2] = 6Dh : m
+06 00000110       Length of Lavel(3) = 6
+6D 01101101       Access Point Name[0] = 6Dh : m
+6E 01101110       Access Point Name[1] = 6Eh : n
+63 01100011       Access Point Name[2] = 63h : c
+30 00110000       Access Point Name[3] = 30h : 0
+30 00110000       Access Point Name[4] = 30h : 0
+31 00110001       Access Point Name[5] = 31h : 1
+06 00000110       Length of Lavel(4) = 6
+6D 01101101       Access Point Name[0] = 6Dh : m
+63 01100011       Access Point Name[1] = 63h : c
+63 01100011       Access Point Name[2] = 63h : c
+30 00110000       Access Point Name[3] = 30h : 0
+30 00110000       Access Point Name[4] = 30h : 0
+31 00110001       Access Point Name[5] = 31h : 1
+04 00000100       Length of Lavel(5) = 4
+67 01100111       Access Point Name[0] = 67h : g
+70 01110000       Access Point Name[1] = 70h : p
+72 01110010       Access Point Name[2] = 72h : r
+73 01110011       Access Point Name[3] = 73h : s
+                 PDN address:
+                  (3GPP TS24.301 9.9.4.9)
+05 00000101       PDN address = 5 byte
+01 00000...       Spare bits = 00000b
+   .....001       PDN type value = 1 :IPv4
+C0 11000000       IPv4 address = C0A80102h
+A8 10101000
+01 00000001
+02 00000010
+                 Transaction identifier (IEI=5Dh):Absent
+                 Negotiated QoS (IEI=30h):Absent
+                 Negotiated LLC SAPI (IEI=32h):Absent
+                 Radio priority (IEI=8h):Absent
+                 Packet flow Identifier (IEI=34h):Absent
+                 APN-AMBR (IEI=5Eh):Absent
+                 ESM cause (IEI=58h):Absent
+27 00100111      Protocol configuration options IEI(27h) = 27h :Present
+                  Protocol configuration options:
+                   (3GPP TS24.008 10.5.6.3)
+0E 00001110        Length of Protocol configuration options = 14 byte
+80 1.......        Ext Bit = 1
+   .0000...        Spare bits = 0000b
+   .....000        Configuration Protocol = 0
+                   (RFC1700)
+                   Protocol Type(1):
+                    (Ref. http://www.iana.org/assignments/ppp-numbers)
+80 10000000         Protocol ID = 32801 :0x8021:Internet Protocol Control Protocol
+21 00100001
+                   Content of Protocol(1):
+0A 00001010         Length of Content = 10 byte
+                    Internet Protocol Control Protocol:
+                     (RFC1332)
+03 00000011          Code = 3 :Configure-Nak
+01 00000001          Identifier = 1
+00 00000000          Length of Configure = 10 byte
+0A 00001010
+                     IPCP Configuration Options(1):
+81 10000001           Type = 129 :Primary DNS Server Address
+                      (RFC1877)
+06 00000110           Length = 6 byte
+                      Length should be 6
+C0 11000000           Server Address[0] = 192
+A8 10101000           Server Address[1] = 168
+01 00000001           Server Address[2] = 1
+01 00000001           Server Address[3] = 1
+Copyright (C) 2010-2012 3GPP Message Analyser
+Bug report, wrong parsing result, please e-mail to 3GPP Message Analyser

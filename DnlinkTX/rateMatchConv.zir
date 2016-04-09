@@ -1,0 +1,54 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include "definitions.zir"
+#include "interleave.zir"
+
+fun rateMatchConv(input : arr [MAX_BIT_MSG_SIZE] bit, inlen : int16, var output : arr[MAX_BIT_MSG_SIZE] bit, outlen : int16) {
+var outint : arr[MAX_BIT_MSG_SIZE] int8;
+var len1 : int16;
+var len2 : int16;
+var len3 : int16;
+var k : int16;
+var j : int16;
+
+let datalen = inlen/3;
+let datalenB = if (datalen % 8 > 0) then ((datalen / 8) + 1)*8 else datalen;
+
+len1 := interleave(input[0, MAX_BIT_MSG_SIZE/3],          inlen/3, outint[0, MAX_BIT_MSG_SIZE/3], INTL_CONV, 0);
+len2 := interleave(input[datalenB, MAX_BIT_MSG_SIZE/3],   inlen/3, outint[len1, MAX_BIT_MSG_SIZE/3], INTL_CONV, 0);
+len3 := interleave(input[2*datalenB, MAX_BIT_MSG_SIZE/3], inlen/3, outint[len1+len2, MAX_BIT_MSG_SIZE/3], INTL_CONV, 0);
+let Kw = len1+len2+len3;
+
+k := 0; j := 0;
+while (k < outlen) {
+  if (outint[j % Kw] != -1) then {
+    output[k] := bit(outint[j % Kw]);
+    k := k + 1;
+  }
+  j := j+1;
+}
+};

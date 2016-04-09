@@ -1,0 +1,62 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include "../definitions.zir"
+#include "../genTemplateSubframe.zir"
+#include "../addDCI0ToSubframe.zir"
+#include "../addMIBToSubframe.zir"
+#include "../addSIBToSubframe.zir"
+
+fun comp test_genFrameFreq(frame : int16) {
+var cellGrid : arr[10*NDLRB*12*14] complex16;
+  let tx = configTX();
+
+-- Initialize frame once for all
+  for (sf : int32) in [0, 10]{
+    let subframe = int16(sf);
+    genTemplateSubframe(cellGrid[sf*NDLRB*12*14, NDLRB*12*14], subframe, tx, true);
+  }
+
+-- Add MIB and SIB, which actually depend on the frame
+  for (sf : int32) in [0, 10]{
+    let subframe = int16(sf);
+    addTestDCI0ToSubframe(cellGrid[sf*NDLRB*12*14, NDLRB*12*14], frame, subframe, tx);
+    addMIBToSubframe(cellGrid[sf*NDLRB*12*14, NDLRB*12*14], frame, subframe, tx);
+    addSIBToSubframe(cellGrid[sf*NDLRB*12*14, NDLRB*12*14], frame, subframe, tx);
+
+    emits cellGrid[sf*NDLRB*12*14, NDLRB*12*14];
+{-
+    let noSubCarrier = tx.NDLRB * 12 in 
+    for i in [0, noSubCarrier * 14] {
+      emit cellGrid[sf*NDLRB*12*14 + i];
+    }
+-}
+  }
+
+};
+
+let comp main = read[int] >>> {test_genFrameFreq(8); test_genFrameFreq(1020)} >>> write
+

@@ -1,0 +1,135 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include <externals.blk>
+#include "../definitions.zir"
+#include "../configureDCI1A.zir"
+#include "../configurePDSCH.zir"
+#include "../dcch.zir"
+#include "../dci.zir"
+#include "../pdcch.zir"
+#include "../dlsch.zir"
+#include "../pdsch.zir"
+#include "../addPDSCHToSubframe.zir"
+
+
+fun comp test_PDSCH() {
+var cellGrid : arr[10*NDLRB*12*14] complex16;
+var bufb : arr[MAX_BIT_MSG_SIZE] bit;
+var bufb_len : int16;
+var bufb2 : arr[MAX_BIT_MSG_SIZE] bit;
+var bufb2_len : int16;
+var bufc : arr[MAX_BIT_MSG_SIZE] complex16;
+var bufc_len : int16;
+
+    let tx = configTX();
+
+    let frame = 2;
+    let subframe = 5;
+
+    let lenrb = 23;
+    let lenmsg = 2024;
+
+    -- System parameters
+    let noSubCarrier = NDLRB * 12;
+
+    for cnt in [0, 1000] {
+      for sf in [0, 10]{
+
+        let tx_sib1 = true; 
+
+        -- sib = '684c42821910f66e82119246a80000000000';
+        let sib1 = 
+          {'0,'1,'1,'0,'1,'0,'0,'0,'0,'1,'0,'0,'1,'1,'0,'0,'0,'1,'0,'0,'0,'0,'1,'0,'1,'0,'0,'0,'0,'0,'1,'0,'0,'0,'0,'1,
+           '1,'0,'0,'1,'0,'0,'0,'1,'0,'0,'0,'0,'1,'1,'1,'1,'0,'1,'1,'0,'0,'1,'1,'0,'1,'1,'1,'0,'1,'0,'0,'0,'0,'0,'1,'0,
+           '0,'0,'0,'1,'0,'0,'0,'1,'1,'0,'0,'1,'0,'0,'1,'0,'0,'1,'0,'0,'0,'1,'1,'0,'1,'0,'1,'0,'1,'0,'0,'0,'0,'0,'0,'0,
+           '0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0};
+
+
+        do {
+          bufb[0, 144] := sib1;
+          bufb_len := lenmsg;
+        }
+       
+        let k = if tx_sib1 then ((frame/2) % 4) 
+                           else 0;                -- TODO: 36.321 5.3.1 last para; safe to hard-code 0 for our scheduler
+
+        let rv = (ceil_int16(3.0 * double(k) / 2.0) % 4);
+
+       
+        let rnti = 64;
+        let d = configureDCI1A(NDLRB, lenrb, 0, bufb_len, rv, 0, 0, rnti);
+        let dcibits = dci(d);
+
+
+        let sched = configurePDSCH(NDLRB, tx.CellRefP, d, rnti);
+        let outlen = countPDSCHToSubframe(sched, frame, subframe, tx) * 2;              -- *2 -> QPSK, hardcoded
+
+        do {
+          bufb2 := dlsch(bufb, bufb_len, outlen, d.RV);
+          bufc_len := 0
+        };
+
+        for i in [0, outlen/8] emits bufb2[i*8, 8] 
+          >>> pdsch(subframe, rnti, d.Modulation, tx) >>> 
+          repeat {
+            pdsch_symbol <- take;
+
+            do {
+              bufc[bufc_len] := pdsch_symbol;
+              bufc_len := bufc_len + 1;
+            }
+          }
+
+        do {addPDSCHToSubframe(cellGrid, bufc, sched, frame, subframe, tx)};
+
+      }
+    }
+
+}
+
+
+{-
+fun comp test() {
+  repeat [8,8] {
+    x<-takes 8;
+    emits x;
+  }
+}
+
+fun comp test_PDSCH() {
+var a : arr[32] int;
+
+for j in [0,4] {
+  x <- takes 32;
+  do {a := x};
+
+  for i in [0, 4] emits a[i*8,8] >>> test();
+}
+}
+-}
+
+let comp main = read[int] >>> test_PDSCH() >>> write [int]

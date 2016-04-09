@@ -1,0 +1,185 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once 
+
+#include <externals.blk>
+#include <v_correlate.blk>
+#include <abs.blk>
+#include <sum.blk>
+#include "preambleTable.zir"
+
+
+
+#define NUM_PREAMBLES 1
+
+
+struct PRACHInfo = { 
+  index : int16;
+  offset : int16;
+  corr : int32
+}
+
+
+
+fun detectPRACH_table(numPreamble : int) {
+  var preambleTable : arr[840*NUM_PREAMBLES] complex16;
+  for k in [0,length(preambleTable)] {
+    preambleTable[k] := complex16{re = preambleTableReal[numPreamble*840+k]; im = preambleTableImag[numPreamble*840+k]}
+  };
+
+  return preambleTable;
+}
+
+
+
+-- Simple AGC: 
+-- Calculate power of 16 samples (not more otherwise it can saturate for large inputs)
+-- Shift the input accordingly 
+fun agc(x : arr complex16, pwr : int32, offset : int32) {
+var xs : arr [length(x)] complex16;
+
+  let amp = v_correlate(x[offset,16], x[offset,16]); 
+  let agc_shift = round_int32(log2(double(pwr) / double(amp.re)) / 2.0);
+  -- println "amp.re = ", amp.re, ", agc_shift = ", agc_shift;
+  if (agc_shift > 0) then {
+    v_shift_left_complex16(xs,x,agc_shift);
+  } else {
+    v_shift_right_complex16(xs,x,-agc_shift);
+  }
+  return xs;
+}
+
+
+
+fun detectUE(xF : arr [1536] complex16, preambleTable : arr[840*NUM_PREAMBLES] complex16) {
+  var index : int16 := -1;
+  var offset : int16;
+  var xFs : arr[840] complex16; -- Aligned on multiple of 4, so 840 not 839
+  var bestDetVal : int := 300000;
+  var xD : arr[840] complex16;
+  var xDp : arr[840] complex16;
+  var xD2 : arr[840] complex16;
+
+  var xDsp : arr[840] complex16;
+
+  var xDdiff : arr[838] complex16;
+
+  var yFs : arr[840] complex16; -- Aligned on multiple of 4, so 840 not 839
+  var yD : arr[840] complex16;
+  var yDp : arr[840] complex16;
+  var yD2 : arr[840] complex16;
+  var yDs : arr[840] complex16;
+  var yD2s : arr[840] complex16;
+  var yDsp : arr[840] complex16;
+
+
+  -- Extract the 839 subcarriers.
+  copy_complex16(xFs[0,419], xF[1117,419], 419);
+  copy_complex16(xFs[419,420], xF[0,420], 420);
+      
+
+  #define SH       13
+
+  -- Normalize
+  v_mul_complex16(xD, xFs, preambleTable[0,840], SH);
+  let xDpow = v_correlate(xD, xD); 
+
+
+  --NOTE: xD[1, 838] is not 16-bit aligned, and v_* are SSE-based
+  --so the call below will cause a segmentation error. 
+  --We copy to an alignes location instead
+  xDp[0,838] := xD[1,838];
+  v_sub_complex16(xD2, xDp, xD);
+
+
+  v_conj_mul_complex16(xDdiff, xDp[0,838], xD[0, 838], 4);
+
+
+
+  -- Calculate the best angle and then correlate
+  -- adj = (angle( round(mean(xDdiff)) ) );
+  let sumAngle = sum_complex16_complex32(xDdiff);
+  let meanAngle = complex16{re=int16(sumAngle.re/838); im=int16(sumAngle.im/838)};
+  let angleTime = atan2_int16(meanAngle.im, meanAngle.re);
+
+  -- yFs = xFs .* exp((-adj) *[1:nZc]); 
+  -- TODO: Speed this up by first generating the array and then multiplying using SIMD
+  for (i:int16) in [0, 838] {
+    let a = cos_int16(angleTime * i) >> 7;
+    let b = -sin_int16(angleTime * i) >> 7;
+    yFs[i] := complex16{re=(a * xFs[i].re - b * xFs[i].im) >> 8; im=(b * xFs[i].re + a * xFs[i].im) >> 8};
+  } 
+
+
+  -- Normalize
+  v_mul_complex16(yD, yFs, preambleTable[0,840], SH);
+
+  yDp[0,838] := yD[1,838];
+  v_sub_complex16(yD2, yDp, yD);
+
+  -- Use a shifted version, because of the precision        
+  v_shift_right_complex16(yDs, yD, 0);
+  v_shift_right_complex16(yD2s, yD2, 0);
+
+
+  let yDpow = v_correlate(yDs, yDs); -- sum of 839 22bit samples, under 32 bit, further 10 bits dropped
+  let yD2pow = v_correlate(yD2s, yD2s); -- sum of 839 22bit samples, under 32 bit
+
+  -- 32 bit / 22 bit, 10 bit result
+  --let dP = if ((yDpow.re >> 10) > 1) then yD2pow.re / (yDpow.re >> 10) else yD2pow.re;
+  let dP = if (yDpow.re > 1) then int32((int64(yD2pow.re) << (20-0)) / int64(yDpow.re)) else yD2pow.re << 20;
+
+
+
+  -- DEBUG
+  -- println "xD: ", xD[0, 10];
+  -- println "xDdiff: ", xDdiff[0, 10];
+  -- println "xDpow: ", xDpow;
+  -- -- 
+  -- println "sumAngle: ", sumAngle;
+  -- println "meanAngle: ", meanAngle;
+  -- println "angleTime: ", angleTime;
+  -- -- 
+  -- println "xFs: ", xFs[0, 10];
+  -- println "yFs: ", yFs[0, 10];
+  -- --
+  -- println "yD: ", yD[0, 10];
+  -- println "yD2: ", yD2[0, 10];
+  -- println "yDpow: ", yDpow;
+  -- println "dP: ", dP;
+
+  
+  if (dP < bestDetVal) then {
+    bestDetVal := dP;
+    -- We don't really detect index here, just presence (-1 - absent, 0 - present)
+    index := 0;
+  }
+
+  return PRACHInfo{index = index; offset = 0; corr = bestDetVal};
+};
+
+

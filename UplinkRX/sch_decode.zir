@@ -1,0 +1,86 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include "../DnlinkTX/definitions.zir"
+#include "derateMatchTurbo.zir"
+#include "decodeTurbo.zir"
+#include "../DnlinkTX/crc.zir"
+#include "../General/debug.zir"
+
+
+fun compare_bits(a1 : arr bit, a2 : arr[length(a1)] bit) {
+var res : bool := true;
+  let len = length(a1);
+  for i in [0, len/8] {
+    let la1 = a1[i*8, 8];
+    let la2 = a2[i*8, 8];
+    for j in [0, 8] {
+      -- res := res & (la1[j] == la2[j]);
+      res := if (la1[j] == la2[j]) then res else false;
+    }
+  }
+  return res;
+}
+
+-- Returns an array of max_size. The caller should trim to trblklen size
+fun sch_decode(e : arr int8, trblklen : int32, rv : int16) {
+var dk : arr[MAX_BIT_MSG_SIZE] int8;
+var crcOK : bool;
+
+  let A = trblklen;
+  let D = A + 24 + 4;    -- TB + CRC + trellis termination
+
+  derateMatchTurbo(e, dk , D, rv);
+
+  let dec = decodeTurbo(dk, int16(A+24));
+  let crc = crc24a(dec, int16(A)); 
+  --println "CRC calculated: ", crc;
+  --println "CRC expected: ", dec[A, 24];
+  --println "Match: ", compare_bits(dec[A, 24], crc);
+
+  -- DEBUG: compare 22 bits instead of 24
+  if (compare_bits(dec[A, 22], crc[0, 22])) then {
+    crcOK := true;
+    if debugPrint(DEBUG_PRINT_PUSCH) then {
+      print "PULSCH received, length ", A, ", data: ";
+      for i in [0, trblklen] {
+        print dec[i];
+      }
+      println " - ", dec[A, 24];
+    }
+  } else {
+    crcOK := false;
+  }
+
+  -- In MAC, frame and subframe will be added later
+  let frame = 0;
+  let subframe = 0;
+
+  let pkt = MACULPacket{frame=frame;subframe=frame;packetType=MAC_UL_SCH;data=dec;len=int16(trblklen);crcOK=crcOK};
+  return pkt;
+}
+

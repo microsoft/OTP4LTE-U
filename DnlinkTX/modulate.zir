@@ -1,0 +1,116 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <externals.blk>
+#include "definitions.zir"
+
+
+
+
+#ifdef FFT_1024
+  #define NFFT  1024
+#else
+  #define NFFT  2048
+#endif 
+
+#define CP_FIRST        (160*NFFT/2048)
+#define CP_OTHER        (144*NFFT/2048)
+
+
+
+
+
+-- *** The OFDM modulation without batching
+-- This is better because batching introduces delay. 
+-- Here we emit whenever we have an OFDM symbol ready, roughly every 70us
+fun comp modulate() {
+var symbol : arr[NFFT] complex16;
+var symbols : arr[NDLRB*12] complex16;
+var output : arr[NFFT+CP_FIRST] complex16;
+var sym_cnt : int16 := 0;
+
+  do {
+    zero_complex16(symbol);
+  }
+
+  repeat seq {
+    (s:arr[NDLRB*12] complex16) <- takes NDLRB*12;
+     
+     do {
+
+-- This causes an error due to SSE call on unaligned mem allocation
+-- Instead, we now first shift and then copy
+#ifdef FFT_1024
+   #ifdef OUT_12_BIT
+        -- 12-bit output
+        v_shift_right_complex16(symbol[NFFT - NDLRB*12/2,NDLRB*12/2], s[0,NDLRB*12/2], 3);
+        v_shift_right_complex16(symbol[1,NDLRB*12/2], s[NDLRB*12/2,NDLRB*12/2], 3);
+   #else
+        -- 16-bit output
+        v_shift_right_complex16(symbol[NFFT - NDLRB*12/2,NDLRB*12/2], s[0,NDLRB*12/2], 1);
+        v_shift_right_complex16(symbol[1,NDLRB*12/2], s[NDLRB*12/2,NDLRB*12/2], 1);
+   #endif
+#else
+   #ifdef OUT_12_BIT
+        -- 12-bit output
+        v_shift_right_complex16(symbol[NFFT - NDLRB*12/2,NDLRB*12/2], s[0,NDLRB*12/2], 2);
+        v_shift_right_complex16(symbol[1,NDLRB*12/2], s[NDLRB*12/2,NDLRB*12/2], 2);
+   #else
+        -- 16-bit output
+        symbol[NFFT - NDLRB*12/2,NDLRB*12/2] := s[0,NDLRB*12/2];
+        symbol[1,NDLRB*12/2] := s[NDLRB*12/2,NDLRB*12/2];
+   #endif
+#endif
+
+
+        -- Add CP and scale
+        if (sym_cnt == 0) then {
+           output[CP_FIRST,NFFT] := sora_ifft(symbol);
+           output[0,CP_FIRST] := output[NFFT,CP_FIRST];
+           v_shift_left_complex16(output, output, 5);
+        } else {
+           output[CP_OTHER,NFFT] := sora_ifft(symbol);
+           output[0,CP_OTHER] := output[NFFT,CP_OTHER];
+           v_shift_left_complex16(output[0, NFFT+CP_OTHER], output[0, NFFT+CP_OTHER], 5);
+        }
+     }
+
+     if (sym_cnt == 0) then {
+       emits output;
+     } else {
+       emits output[0, CP_OTHER + NFFT];
+     }
+
+     do{
+       sym_cnt := (sym_cnt + 1) % 7;
+     };
+  }
+};
+
+
+
+

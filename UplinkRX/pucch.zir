@@ -1,0 +1,335 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <externals.blk>
+#include <abs.blk>
+#include <v_correlate.blk>
+#include "../DnlinkTX/definitions.zir"
+#include "../DnlinkTX/gold.zir"
+#include "../General/timingInfo.zir"
+#include "../General/debug.zir"
+
+
+-- Get one set of pucch codes
+fun getPucchCode(var codes : arr complex16, symbols : arr int16, ack : int, S : arr complex16, W : arr complex16, 
+                     ns : int16, NCellID : int16, ResourceIdx : int16, DeltaShift : int16) {
+var a_ncs_cell : arr[1] int8;
+var cnt : int16 := 0;
+  
+  for j in [0, length(symbols)] {
+    let l = symbols[j];
+
+-- DEBUG: The following code causes very weird and tricky issues with synchronization
+-- that I couldn't sort out, so instead we hardcode the array for NCellID = 11;
+--    let g = gold(int32(NCellID), 8*7*20 + 8*14 + 8);
+--    bits_to_int8(a_ncs_cell, g[8*7*ns + 8*l, 8]);
+    let a_ncs_arr = {70,109,-90,104,-106,27,-65,-103,-72,102,-12,-25,21,124,12,82,-92,
+                     -114,9,108,79,32,-33,-112,36,-38,107,-102,50,78,4,-11,35,-71,87,
+                     -62,47,-38,-91,95,31,9,-88,7,14,-22,102,-44,8,-68,-26,-92,119,65,
+                     91,-123,4,26,104,-112,99,-119,37,112,83,79,-19,55,98,-119,89,-10,
+                     83,-1,-94,69,98,-89,39,-34,3,-66,19,94,118,9,-13,-26,-23,122,95,
+                     63,61,123,-127,-82,-123,43,5,86,-21,15,-112,-93,-4,-92,21,38,118,
+                     47,-126,-52,-94,33,100,-121,84,-18,42,27,-3,20,120,-77,-111,-101,
+                     -19,-99,23,59,88,-95,74,-123,-76,-9,76,-77,21,0};
+    a_ncs_cell[0] := a_ncs_arr[ns*7+l];
+
+    let (ncs_cell : int16) = if (a_ncs_cell[0] < 0) then 256 + int16(a_ncs_cell[0]) else int16(a_ncs_cell[0]);
+  
+    let c = 3; -- normal cyclic prefix
+    let n_0 = ResourceIdx % ((c * 12) / DeltaShift);                -- assume Ncs = 0
+    let n_1 = (c * (n_0 + 1)) % ((c * 12) / DeltaShift + 1) - 1;    -- assume Ncs = 0
+  
+    let n_ = if (ns % 2 == 0) then n_0 else n_1;
+  
+    let noc = (n_ * DeltaShift / 12);
+    let ncs = (ncs_cell + (n_ * DeltaShift + (noc % DeltaShift))) % 12;
+    
+    let alpha = 2.0 * pi * double(ncs) / 12.0;
+  
+    -- assert(ue.NCellID == 11); % TODO: whole table
+    let phi = {3, 1, -1, -1, 3, 3, -3, 1, 3, 1, 3, 3};
+  
+    let normCoeff = 1000; -- Defines precision of trigonometry
+  
+  -- sW = s*W[j]
+    let s = S[n_ % 2];
+    let w = W[int32(noc)*length(symbols) + j];
+    let sW = complex16{
+               re=int16((int32(s.re)*int32(w.re)-int32(s.im)*int32(w.im))>>14);
+               im=int16((int32(s.re)*int32(w.im)+int32(s.im)*int32(w.re))>>14)
+             };
+  
+    for n in [0, 12] {
+      let angle = pi * double(phi[n]) / 4.0;
+      let c = if (ack == 0) then
+                polar(angle + alpha * double(n), normCoeff)
+              else 
+                let c1 = polar(angle + alpha * double(n), normCoeff) in 
+                complex16{re=-c1.re; im=-c1.im};
+      codes[cnt*12 + n] := complex16{
+               re=int16((int32(sW.re)*int32(c.re)-int32(sW.im)*int32(c.im))>>14);
+               im=int16((int32(sW.re)*int32(c.im)+int32(sW.im)*int32(c.re))>>14)
+             };
+    }
+    cnt := cnt + 1;
+  }
+}
+
+
+-- get the entire set of pucch codes (pilots + message) for one ResourceIdx for one slot (ns)
+fun getPucchCodes(var codes : arr complex16, ns : int16, NCellID : int16, ResourceIdx : int16, DeltaShift : int16) {
+var S : arr[2] complex16;
+var W : arr[12] complex16;
+var Sd : arr[2] complex16;
+var Wd : arr[9] complex16;
+
+  let normCoeff = 1000; -- Defines precision of trigonometry
+  
+  let symbols_d = {2, 3, 4};
+  let symbols = {0, 1, 5, 6};
+
+  -- S = [1, 1]
+  Sd[0] := complex16{re=15000; im=0};
+  Sd[1] := complex16{re=15000; im=0};
+  -- W = [1 1 1; 1 exp(1j*2*pi/3) exp(1j*4*pi/3); 1 exp(1j*4*pi/3) exp(1j*2*pi/3)];
+  Wd[0] := complex16{re=15000; im=0};
+  Wd[1] := complex16{re=15000; im=0};
+  Wd[2] := complex16{re=15000; im=0};
+  Wd[3] := complex16{re=15000; im=0};
+  Wd[4] := complex16{re=-7485; im=12990};
+  Wd[5] := complex16{re=-7485; im=-12990};
+  Wd[6] := complex16{re=15000; im=0};
+  Wd[7] := complex16{re=-7485; im=-12990};
+  Wd[8] := complex16{re=-7485; im=12990};
+
+  -- S = [1 exp(1j * pi / 2)];
+  S[0] := complex16{re=15000; im=0};
+  S[1] := complex16{re=0; im=15000};
+  -- W = [1 1 1 1; 1 -1 1 -1; 1 -1 -1 1];
+  W[0] := complex16{re=15000; im=0};
+  W[1] := complex16{re=15000; im=0};
+  W[2] := complex16{re=15000; im=0};
+  W[3] := complex16{re=15000; im=0};
+  W[4] := complex16{re=15000; im=0};
+  W[5] := complex16{re=-15000; im=0};
+  W[6] := complex16{re=15000; im=0};
+  W[7] := complex16{re=-15000; im=0};
+  W[8] := complex16{re=15000; im=0};
+  W[9] := complex16{re=-15000; im=0};
+  W[10] := complex16{re=-15000; im=0};
+  W[11] := complex16{re=15000; im=0};
+
+  getPucchCode(codes[0,36],  symbols_d,   0, Sd, Wd, ns, NCellID, ResourceIdx, DeltaShift);
+  let ack = 1;
+  getPucchCode(codes[36,48], symbols,   ack, S,  W,  ns, NCellID, ResourceIdx, DeltaShift);
+}
+
+
+
+-- Find the starting RE for PUCCH in slot ns
+fun pucch1i(ns : int16, NCellID : int16, ResourceIdx : int16, DeltaShift : int16, ResourceSize : int16) {
+  let m = (ResourceIdx / int16(3.0 * 12.0 / double(DeltaShift))) + ResourceSize; -- assume Ncs = 0
+  let slot = ns % 2;
+  let startRB = 
+    if ((m % 2) == 0 && slot == 0) || ((m % 2) != 0 && slot == 1) then 
+      m/2
+    else 
+      (NULRB - 1 - (m/2));
+
+  -- DEBUG: Seems that the lower bit is shifter by one RE. Find out why!
+  let startRE = if (startRB > 0) then (startRB*12-1) else 0;
+
+  return startRE;
+}
+
+
+
+-- Initialize all possible PUCCH codes
+fun pucch_init_codes(var code : arr[84*20*8] complex16, NCellID : int16, DeltaShift : int16) {
+  for ResourceIdx in [0, 8] {
+    for ns in [0, 20] {
+      -- Calculate the appropriate codes
+      let start = 84*(ResourceIdx*20+ns);
+      getPucchCodes(code[start,84], ns, NCellID, ResourceIdx, DeltaShift);
+    }
+  }
+}
+
+
+-- Check correlation against resouce index ResourceIdx
+fun pucch_slot(data : arr [7*12] complex16, ns : int16, NCellID : int16, 
+               ResourceIdx : int16, DeltaShift : int16, params : struct ULRXParams) {
+var code : arr [7*12] complex16; 
+var re32:arr[36] int32;
+var im32:arr[36] int32;    
+var sq_norm32:arr[36] int32;
+var chanCoeffs : arr[12] complex16;
+var eq:arr[48] complex16;
+
+  -- Calculate the appropriate codes
+  -- SLOW: getPucchCodes(code[0,84], ns, NCellID, ResourceIdx, DeltaShift);
+  code := params.pucch_drs[84*(ResourceIdx*20+ns),84];
+
+
+  -- DRS calculation is currently slow so we precalculate for a fixed number of RB
+  -- let ref_pilots = drs(ns, NCellID, NRB);
+  let ref_pilots = code[0, 36];
+  let rcv_pilots = data[2*12, 36];
+
+  -- See comment in equalize.zir
+  let eq_norm_shift = 9 - 4;
+  let norm_shift = 10 - 4;
+
+
+  -- Calculate sq_norm
+  v_conj_mul_complex16_int32(re32, im32, rcv_pilots, rcv_pilots);
+  v_shift_right_int32(sq_norm32,re32,int(eq_norm_shift));
+
+  -- Calculate angle
+  v_conj_mul_complex16_int32(re32, im32, ref_pilots, rcv_pilots);
+
+  zero_complex16(chanCoeffs);
+
+  -- Invert the channel
+  for j in [0,36] {
+    if sq_norm32[j] > 1 then { -- precision, 0.1 is 100
+      chanCoeffs[j % 12] := chanCoeffs[j % 12] + 
+           complex16{re=int16(re32[j]/sq_norm32[j]);im=int16(im32[j]/sq_norm32[j])}
+    }
+  }
+
+  -- Average over all three pilots
+  for j in [0, 12] {
+    let c = chanCoeffs[j];
+    chanCoeffs[j] := complex16{re=c.re/3; im=c.im/3};
+  }
+
+  -- Remove channel  
+  let symbols = {0, 1, 5, 6};
+  for i in [0,length(symbols)] { 
+    v_mul_complex16(eq[i*12, 12], data[symbols[i]*12, 12], chanCoeffs, 15);
+  }
+
+  -- Find correlation with the desired codeword
+  let corr = v_correlate(eq, code[36,48]);
+  return corr;
+}
+
+
+
+fun comp pucch(subframe : int16, NCellID : int16, DeltaShift : int16, ResourceSize : int16, params : struct ULRXParams) {
+var data : arr[7*12] complex16;
+var symbol : int16 := 0;
+var corr0_0 : complex32;
+var corr0_4 : complex32;
+var corr1_0 : complex32;
+var corr1_4 : complex32;
+
+  -- Here we assume an invariant that startRE is the same for ResourceIxd=0 and ResourceIdx=4
+  let startRE0 = pucch1i(2*subframe,   NCellID, 0, DeltaShift, ResourceSize);
+  let startRE1 = pucch1i(2*subframe+1, NCellID, 0, DeltaShift, ResourceSize);
+
+  repeat { 
+     -- PUCCH boilerplate
+     -- Take one slot
+    (grid : arr complex16) <- takes NULRB * 12;
+
+    -- Reset PUCCH first
+    do {
+      globalPUCCH.frame := -1;
+    }
+
+    do {
+      if (symbol < 7) then {
+        data[symbol*12,12] := grid[startRE0, 12];
+      } else {
+        data[(symbol-7)*12,12] := grid[startRE1, 12];
+      }
+
+      if (symbol == 6) then {
+        corr0_0 := pucch_slot(data, 2*subframe, NCellID, 0, DeltaShift, params);
+        corr0_4 := pucch_slot(data, 2*subframe, NCellID, 4, DeltaShift, params);
+      }
+
+      if (symbol == 13) then {
+        corr1_0 := pucch_slot(data, 2*subframe+1, NCellID, 0, DeltaShift, params);
+        corr1_4 := pucch_slot(data, 2*subframe+1, NCellID, 4, DeltaShift, params);
+
+        -- Correlation with AGC is expected to be ~15e6. This is over 96 samples. 
+        -- Noise will have std deviation 15e6/96*sqrt(96) = 1.5e6, and we choose 3 stdev to remove false positives
+        -- Doug still observed too many false positives so multiplied by an extra factor of 2
+        let (corr_thr:int32) = 1500000 * 3 * 2;
+        let corr_0 = corr0_0 + corr1_0;
+        let corr_4 = corr0_4 + corr1_4;
+        if (abs_int32(corr_0.re) > corr_thr) then {
+          let time = getRXTime();
+          globalPUCCH.frame := time.frame;
+          globalPUCCH.subframe := time.subFrame;
+          globalPUCCH.packetType := MAC_UL_CCH;
+          if (corr_0.re > 0) then {
+            globalPUCCH.len := MAC_PUCCH_SR;
+          } else {
+            globalPUCCH.len := MAC_PUCCH_NSR;
+          }
+          if (debugPrint(DEBUG_PRINT_PUCCH)) then {
+            printTime(time);
+            if (corr_0.re > 0) then {
+              print ", SR: ";
+            } else {
+              print ", N-SR?: ";
+            }
+            println "Corr0: ", corr_0, " (", corr0_0, " + ", corr1_0, ")";
+          }
+        }
+        if (abs_int32(corr_4.re) > corr_thr) then {
+          let time = getRXTime();
+          globalPUCCH.frame := time.frame;
+          globalPUCCH.subframe := time.subFrame;
+          globalPUCCH.packetType := MAC_UL_CCH;
+          if (corr_4.re > 0) then {
+            globalPUCCH.len := MAC_PUCCH_ACK;
+          } else {
+            globalPUCCH.len := MAC_PUCCH_NACK;
+          }
+          if (debugPrint(DEBUG_PRINT_PUCCH)) then {
+            printTime(time);
+            if (corr_4.re > 0) then {
+              print ", ACK:  ";
+            } else {
+              print ", NACK: ";
+            }
+            println "Corr4: ", corr_4, " (", corr0_4, " + ", corr1_4, ")";
+          }
+        }
+      }
+
+      symbol := symbol + 1;
+    }
+
+    emits grid[12*1, (NULRB-2) * 12];
+  }  
+}

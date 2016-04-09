@@ -1,0 +1,117 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <externals.blk>
+#include "definitions.zir"
+
+
+#define X1_LENGTH                  (MAX_GOLD_SEQUENCE_LEN + 1616)
+ 
+-- 
+-- Generate Gold sequence of length <nCLength> with starting seed <cinit>
+-- See 36.211, Section 7.2
+-- 
+fun gold(cinit: int32, nCLength: int16) {
+   var x1Buffer: arr[X1_LENGTH] bit;
+   var x2Buffer: arr[X1_LENGTH] bit;
+   var tmp8 : arr[8] bit;
+   var tmp8_1 : arr[8] bit;
+   var tmp8_2 : arr[8] bit;
+   var tmp16 : arr[16] bit;
+   var c : arr[MAX_GOLD_SEQUENCE_LEN] bit;
+
+   let NC = 1600;
+   let xlength = NC + nCLength;
+
+
+   zero_bit(x1Buffer);
+   zero_bit(x2Buffer);
+
+   x1Buffer[0] := '1;
+
+
+{- Old unLUTtable code
+   for i in [0, 30] {
+       x2Buffer[i] := bit((cinit/(1<<i))%2)
+   };
+-}
+
+   for i in [0, 4] {
+     for j in [0, 8] {
+       let ind = 8*i+j;
+       tmp8_1[j] := bit((cinit/(1<<ind))%2)
+     }
+     x2Buffer[i*8,8] := tmp8_1;
+   };
+
+
+{- Old unLUTtable code
+   for i in [0, xlength -31] {
+       x1Buffer[i+31] := (x1Buffer[i+3] ^ x1Buffer[i]);
+       x2Buffer[i+31] := (x2Buffer[i+3] ^ x2Buffer[i+2] ^ x2Buffer[i+1] ^ x2Buffer[i])
+   };		  
+-}
+
+   let paddedLen = if ((xlength - 31) % 16 > 0) then ((xlength - 31) / 16 + 1) * 16 else (xlength - 31);
+
+   for i in [0, paddedLen/8] {
+     tmp16 := x1Buffer[i*8, 16];
+     for j in [0, 8] {
+       tmp8_1[j] := tmp16[j+3] ^ tmp16[j];
+     }
+     x1Buffer[i*8+31,8] := tmp8_1;
+   }
+
+   for i in [0, paddedLen/8] {
+     tmp16 := x2Buffer[i*8, 16];
+     for j in [0, 8] {
+       tmp8_1[j] := tmp16[j+3] ^ tmp16[j+2] ^ tmp16[j+1] ^ tmp16[j];
+     }
+     x2Buffer[i*8+31,8] := tmp8_1;
+   }
+
+
+{- Old unLUTtable code
+   for i in [0, nCLength] {
+       c[i] := (x1Buffer[i+NC] ^ x2Buffer[i+NC])
+   };
+-}
+
+   let padded_nCLength = if (nCLength % 8 > 0) then (nCLength / 8 + 1) * 8 else nCLength;
+
+   for i in [0, padded_nCLength/8] {
+     tmp8_1 := x1Buffer[i*8+NC,8];
+     tmp8_2 := x2Buffer[i*8+NC,8];
+     for j in [0, 8] {
+       tmp8[j] := tmp8_1[j] ^ tmp8_2[j]; 
+     }
+     c[i*8,8] := tmp8;
+   };
+
+   return c 
+};
+

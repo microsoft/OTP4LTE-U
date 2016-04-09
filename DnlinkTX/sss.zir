@@ -1,0 +1,133 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once 
+
+fun nSSS_qp(Nid1 : int16) { return Nid1/30 };
+fun nSSS_q(Nid1 : int16) { return (Nid1 + nSSS_qp(Nid1)*(nSSS_qp(Nid1)+1)/2)/30 };
+fun nSSS_mp(Nid1 : int16) { return Nid1 + nSSS_q(Nid1)*(nSSS_q(Nid1) + 1)/2 };
+fun nSSS_m0(Nid1 : int16) { return nSSS_mp(Nid1) % 31 };
+fun nSSS_m1(Nid1 : int16) { return (nSSS_m0(Nid1) + (nSSS_mp(Nid1)/31) + 1)%31 };
+
+fun init_nSSS_x(var nSSS_x:arr[31] int16) {
+   zero_int16(nSSS_x[0,4]);
+   nSSS_x[4] := 1;
+
+   for j in [0,26] {
+     nSSS_x[j + 5] := ( nSSS_x[j + 2] + nSSS_x[j] )%2
+   }
+};
+
+fun init_nSSS_xp(var nSSS_xp:arr[31] int16) {
+   zero_int16(nSSS_xp[0,4]);
+   nSSS_xp[4] := 1;
+
+   for j in [0,26] {
+     nSSS_xp[j + 5] := ( nSSS_xp[j + 3] + nSSS_xp[j] )%2
+   }
+};
+
+fun init_nSSS_xs(var nSSS_xs:arr[31] int16) {
+   zero_int16(nSSS_xs[0,4]);
+   nSSS_xs[4] := 1;
+
+   for j in [0,26] {
+     nSSS_xs[j + 5] := ( nSSS_xs[j + 4] + nSSS_xs[j + 2] + nSSS_xs[j + 1] + nSSS_xs[j] )%2
+   }
+};
+
+
+-- Create SSS0 and SSS5 sync. sequences
+fun comp sss(Nid1 : int16, Nid2:int16, nSubframe : int16) {
+   var nSSS_x:arr[31] int16;
+   var nSSS_xp:arr[31] int16;
+   var nSSS_xs:arr[31] int16;
+   var aSSSSeq:arr[62] complex16;
+
+   -- TODO: <sss> has to be comp instead of expr because 
+   -- we cannot have let functions defined in expr language
+   -- once this is done we should move it back to expr.
+
+   do{
+     init_nSSS_x(nSSS_x);
+     init_nSSS_xs(nSSS_xs);
+     init_nSSS_xp(nSSS_xp);
+     zero_complex16(aSSSSeq);
+   };
+
+
+   -- (1-2*nSSS_xp(mod(n+NID2,31) +1));
+   fun SSS_s0(n:int16, Nid1:int16) { return 1-2*nSSS_x[ ( n + nSSS_m0(Nid1) )%31 ] };
+
+   -- (1-2*nSSS_xp(mod(n+NID2,31) +1));
+   fun SSS_s1(n:int16, Nid1:int16) { return 1-2*nSSS_x[ ( n + nSSS_m1(Nid1) )%31 ] };
+
+   -- (1-2*nSSS_xp(mod(n+NID2,31) +1));
+   fun SSS_c0(n:int16, Nid2:int16) { return 1-2*nSSS_xp[ ( n + Nid2 )%31 ] };
+
+   -- (1-2*nSSS_xp(mod(n+NID2,31) +1));
+   fun SSS_c1(n:int16, Nid2:int16) { return 1-2*nSSS_xp[ ( n + Nid2 + 3 )%31 ] };
+
+   -- (1-2*nSSS_xp(mod(n+NID2,31) +1));
+   fun SSS_z0(n:int16, Nid1:int16) { return 1-2*nSSS_xs[ ( n + nSSS_m0(Nid1)%8 )%31 ] };
+
+   -- (1-2*nSSS_xp(mod(n+NID2,31) +1));
+   fun SSS_z1(n:int16, Nid1:int16) { return 1-2*nSSS_xs[ ( n + nSSS_m1(Nid1)%8 )%31 ] };
+
+   fun SSS_d0(n:int16, Nid1:int16, Nid2:int16) {
+     -- (1-2*nSSS_xp(mod(n+NID2,31) +1));
+     if n%2 == 0 then
+       { return SSS_s0( n/2, Nid1 ) * SSS_c0( n/2, Nid2 ) }
+     else
+       -- SSS_s1(floor((n-1)/2))*SSS_c1(floor((n-1)/2))*SSS_z0(floor((n-1)/2)))
+       { return SSS_s1((n-1)/2, Nid1)*SSS_c1( (n-1)/2, Nid2 )*SSS_z0( (n-1)/2, Nid1 ) }
+   };
+
+   fun SSS_d5(n:int16, Nid1:int16, Nid2:int16) {
+     -- (1-2*nSSS_xp(mod(n+NID2,31) +1));
+     if n%2 == 0 then    
+       { return SSS_s1( n/2, Nid1 ) * SSS_c0( n/2, Nid2 ) }
+     else
+       -- SSS_s1(floor((n-1)/2))*SSS_c1(floor((n-1)/2))*SSS_z0(floor((n-1)/2)))
+       { return SSS_s0((n-1)/2, Nid1)*SSS_c1( (n-1)/2, Nid2 )*SSS_z1( (n-1)/2, Nid1 ) }
+   };
+
+   do{
+     if (nSubframe == 0) then {
+       for ii in [0, 62] {     
+         aSSSSeq[ii] := complex16{re=SSS_d0(int16(ii), Nid1, Nid2) * bpsk_mod_amp; im=0};
+       } 
+     } else {
+       for ii in [0, 62] {     
+         aSSSSeq[ii] := complex16{re=SSS_d5(int16(ii), Nid1, Nid2) * bpsk_mod_amp; im=0};
+       } 
+     }
+   }
+
+   return aSSSSeq;
+};
+
+

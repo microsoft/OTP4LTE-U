@@ -1,0 +1,136 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include "definitions.zir"
+fun modulate_qam64_lut (x : arr[6] bit) {
+  var outi : int16 := 0;
+
+  if (x[0] == bit(1)) then {
+    outi := outi + 32;
+  } 
+  if (x[1] == bit(1)) then {
+    outi := outi + 16;
+  } 
+  if (x[2] == bit(1)) then {
+    outi := outi + 8;
+  } 
+  if (x[3] == bit(1)) then {
+    outi := outi + 4;
+  } 
+  if (x[4] == bit(1)) then {
+    outi := outi + 2;
+  } 
+  if (x[5] == bit(1)) then {
+    outi := outi + 1;
+  } 
+
+  return outi
+};
+
+
+fun comp qam64 () { 
+var outa : arr[64] complex16;
+
+  do{
+    outa[0]  := complex16{re=3*(qpsk_mod_amp/7);im=3*(qpsk_mod_amp/7)};
+    outa[1]  := complex16{re=3*(qpsk_mod_amp/7);im=1*(qpsk_mod_amp/7)};
+    outa[2]  := complex16{re=1*(qpsk_mod_amp/7);im=3*(qpsk_mod_amp/7)};
+    outa[3]  := complex16{re=1*(qpsk_mod_amp/7);im=1*(qpsk_mod_amp/7)};
+    outa[4]  := complex16{re=3*(qpsk_mod_amp/7);im=5*(qpsk_mod_amp/7)};
+    outa[5]  := complex16{re=3*(qpsk_mod_amp/7);im=7*(qpsk_mod_amp/7)};
+    outa[6]  := complex16{re=1*(qpsk_mod_amp/7);im=5*(qpsk_mod_amp/7)};
+    outa[7]  := complex16{re=1*(qpsk_mod_amp/7);im=7*(qpsk_mod_amp/7)};
+    outa[8]  := complex16{re=5*(qpsk_mod_amp/7);im=3*(qpsk_mod_amp/7)};
+    outa[9]  := complex16{re=5*(qpsk_mod_amp/7);im=1*(qpsk_mod_amp/7)};
+    outa[10] := complex16{re=7*(qpsk_mod_amp/7);im=3*(qpsk_mod_amp/7)};
+    outa[11] := complex16{re=7*(qpsk_mod_amp/7);im=1*(qpsk_mod_amp/7)};
+    outa[12] := complex16{re=5*(qpsk_mod_amp/7);im=5*(qpsk_mod_amp/7)};
+    outa[13] := complex16{re=5*(qpsk_mod_amp/7);im=7*(qpsk_mod_amp/7)};
+    outa[14] := complex16{re=7*(qpsk_mod_amp/7);im=5*(qpsk_mod_amp/7)};
+    outa[15] := complex16{re=7*(qpsk_mod_amp/7);im=7*(qpsk_mod_amp/7)};
+
+    outa[16] := complex16{re=3*(qpsk_mod_amp/7);im=-3*(qpsk_mod_amp/7)};
+    outa[17] := complex16{re=3*(qpsk_mod_amp/7);im=-1*(qpsk_mod_amp/7)};
+    outa[18] := complex16{re=1*(qpsk_mod_amp/7);im=-3*(qpsk_mod_amp/7)};
+    outa[19] := complex16{re=1*(qpsk_mod_amp/7);im=-1*(qpsk_mod_amp/7)};
+    outa[20] := complex16{re=3*(qpsk_mod_amp/7);im=-5*(qpsk_mod_amp/7)};
+    outa[21] := complex16{re=3*(qpsk_mod_amp/7);im=-7*(qpsk_mod_amp/7)};
+    outa[22] := complex16{re=1*(qpsk_mod_amp/7);im=-5*(qpsk_mod_amp/7)};
+    outa[23] := complex16{re=1*(qpsk_mod_amp/7);im=-7*(qpsk_mod_amp/7)};
+    outa[24] := complex16{re=5*(qpsk_mod_amp/7);im=-3*(qpsk_mod_amp/7)};
+    outa[25] := complex16{re=5*(qpsk_mod_amp/7);im=-1*(qpsk_mod_amp/7)};
+    outa[26] := complex16{re=7*(qpsk_mod_amp/7);im=-3*(qpsk_mod_amp/7)};
+    outa[27] := complex16{re=7*(qpsk_mod_amp/7);im=-1*(qpsk_mod_amp/7)};
+    outa[28] := complex16{re=5*(qpsk_mod_amp/7);im=-5*(qpsk_mod_amp/7)};
+    outa[29] := complex16{re=5*(qpsk_mod_amp/7);im=-7*(qpsk_mod_amp/7)};
+    outa[30] := complex16{re=7*(qpsk_mod_amp/7);im=-5*(qpsk_mod_amp/7)};
+    outa[31] := complex16{re=7*(qpsk_mod_amp/7);im=-7*(qpsk_mod_amp/7)};
+
+    outa[32] := complex16{re=-3*(qpsk_mod_amp/7);im=3*(qpsk_mod_amp/7)};
+    outa[33] := complex16{re=-3*(qpsk_mod_amp/7);im=1*(qpsk_mod_amp/7)};
+    outa[34] := complex16{re=-1*(qpsk_mod_amp/7);im=3*(qpsk_mod_amp/7)};
+    outa[35] := complex16{re=-1*(qpsk_mod_amp/7);im=1*(qpsk_mod_amp/7)};
+    outa[36] := complex16{re=-3*(qpsk_mod_amp/7);im=5*(qpsk_mod_amp/7)};
+    outa[37] := complex16{re=-3*(qpsk_mod_amp/7);im=7*(qpsk_mod_amp/7)};
+    outa[38] := complex16{re=-1*(qpsk_mod_amp/7);im=5*(qpsk_mod_amp/7)};
+    outa[39] := complex16{re=-1*(qpsk_mod_amp/7);im=7*(qpsk_mod_amp/7)};
+    outa[40] := complex16{re=-5*(qpsk_mod_amp/7);im=3*(qpsk_mod_amp/7)};
+    outa[41] := complex16{re=-5*(qpsk_mod_amp/7);im=1*(qpsk_mod_amp/7)};
+    outa[42] := complex16{re=-7*(qpsk_mod_amp/7);im=3*(qpsk_mod_amp/7)};
+    outa[43] := complex16{re=-7*(qpsk_mod_amp/7);im=1*(qpsk_mod_amp/7)};
+    outa[44] := complex16{re=-5*(qpsk_mod_amp/7);im=5*(qpsk_mod_amp/7)};
+    outa[45] := complex16{re=-5*(qpsk_mod_amp/7);im=7*(qpsk_mod_amp/7)};
+    outa[46] := complex16{re=-7*(qpsk_mod_amp/7);im=5*(qpsk_mod_amp/7)};
+    outa[47] := complex16{re=-7*(qpsk_mod_amp/7);im=7*(qpsk_mod_amp/7)};
+
+    outa[48] := complex16{re=-3*(qpsk_mod_amp/7);im=-3*(qpsk_mod_amp/7)};
+    outa[49] := complex16{re=-3*(qpsk_mod_amp/7);im=-1*(qpsk_mod_amp/7)};
+    outa[50] := complex16{re=-1*(qpsk_mod_amp/7);im=-3*(qpsk_mod_amp/7)};
+    outa[51] := complex16{re=-1*(qpsk_mod_amp/7);im=-1*(qpsk_mod_amp/7)};
+    outa[52] := complex16{re=-3*(qpsk_mod_amp/7);im=-5*(qpsk_mod_amp/7)};
+    outa[53] := complex16{re=-3*(qpsk_mod_amp/7);im=-7*(qpsk_mod_amp/7)};
+    outa[54] := complex16{re=-1*(qpsk_mod_amp/7);im=-5*(qpsk_mod_amp/7)};
+    outa[55] := complex16{re=-1*(qpsk_mod_amp/7);im=-7*(qpsk_mod_amp/7)};
+    outa[56] := complex16{re=-5*(qpsk_mod_amp/7);im=-3*(qpsk_mod_amp/7)};
+    outa[57] := complex16{re=-5*(qpsk_mod_amp/7);im=-1*(qpsk_mod_amp/7)};
+    outa[58] := complex16{re=-7*(qpsk_mod_amp/7);im=-3*(qpsk_mod_amp/7)};
+    outa[59] := complex16{re=-7*(qpsk_mod_amp/7);im=-1*(qpsk_mod_amp/7)};
+    outa[60] := complex16{re=-5*(qpsk_mod_amp/7);im=-5*(qpsk_mod_amp/7)};
+    outa[61] := complex16{re=-5*(qpsk_mod_amp/7);im=-7*(qpsk_mod_amp/7)};
+    outa[62] := complex16{re=-7*(qpsk_mod_amp/7);im=-5*(qpsk_mod_amp/7)};
+    outa[63] := complex16{re=-7*(qpsk_mod_amp/7);im=-7*(qpsk_mod_amp/7)};
+  }; 
+
+  repeat [6, 1] {
+    (x : arr[6] bit) <- takes 6;
+    --do{println int32(modulate_qam64_lut(x)), " ", x};
+    emit outa[int32(modulate_qam64_lut(x))];
+  }
+
+};
+
+

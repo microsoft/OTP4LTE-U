@@ -1,0 +1,176 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <externals.blk>
+#include "../DnlinkTX/definitions.zir"
+#include "../General/timingInfo.zir"
+#include "../General/debug.zir"
+
+
+#ifdef FFT_1024
+  #define NFFT  1024
+#else
+  #define NFFT  2048
+#endif 
+
+#define CP_FIRST        (160*NFFT/2048)
+#define CP_OTHER        (144*NFFT/2048)
+
+
+fun init_demodulate(var params : struct ULRXParams) {
+    -- Defines precision of trigonometry
+    let normCoeff = 1000 in 
+    
+    for k in [0,NFFT] {
+      params.halfsc0[k] := complex16{re=int16(cosine_double_int32(int32(pi*double(normCoeff)*
+                                       double(k-CP_FIRST/2)/double(NFFT)), normCoeff)*int32(bpsk_mod_amp)/normCoeff);
+                              im=int16(-sine_double_int32(int32(pi*double(normCoeff)*
+                                       double(k-CP_FIRST/2)/double(NFFT)), normCoeff)*int32(bpsk_mod_amp)/normCoeff)};
+      params.halfsc[k] := complex16{re=int16(cosine_double_int32(int32(pi*double(normCoeff)*
+                                       double(k-CP_OTHER/2)/double(NFFT)), normCoeff)*int32(bpsk_mod_amp)/normCoeff);
+                              im=int16(-sine_double_int32(int32(pi*double(normCoeff)*
+                                       double(k-CP_OTHER/2)/double(NFFT)), normCoeff)*int32(bpsk_mod_amp)/normCoeff)};
+      params.phCorr0[k] := complex16{re=int16(cosine_double_int32(int32(2.0*pi*double(normCoeff)*
+                                       double(k*(CP_FIRST/2))/double(NFFT)), normCoeff)*int32(bpsk_mod_amp)/normCoeff);
+                              im=int16(sine_double_int32(int32(2.0*pi*double(normCoeff)*
+                                       double(k*(CP_FIRST/2))/double(NFFT)), normCoeff)*int32(bpsk_mod_amp)/normCoeff)};
+      params.phCorr[k] := complex16{re=int16(cosine_double_int32(int32(2.0*pi*double(normCoeff)*
+                                       double(k*(CP_OTHER/2))/double(NFFT)), normCoeff)*int32(bpsk_mod_amp)/normCoeff);
+                              im=int16(sine_double_int32(int32(2.0*pi*double(normCoeff)*
+                                       double(k*(CP_OTHER/2))/double(NFFT)), normCoeff)*int32(bpsk_mod_amp)/normCoeff)};
+    }
+}
+
+
+-- New, vectorized version for easier matching with the pipeline
+fun comp demodulate(params : struct ULRXParams) {
+var symbol : arr[NFFT] complex16;
+var start : int := 0;
+var cnt : int := 0;
+
+var sym_cnt : int32 := 0;
+
+-- Energy estimation
+#ifdef TEST_BED
+var scopy : arr[2048] complex16;
+var re32 : arr[2048] int32;
+var im32 : arr[2048] int32;
+let threshold = getEnergyDetectionThreshold();
+#endif 
+
+
+  repeat {
+    sall <- takes (7*NFFT + CP_FIRST + 6*CP_OTHER);
+    -- (sall : arr[(7*NFFT + CP_FIRST + 6*CP_OTHER)] complex16) <- take;
+    do{start := 0};
+
+    -- Energy detection
+#ifdef TEST_BED
+    do{
+      if debugPrint(DEBUG_PRINT_ENERGY) then {
+        let sample = sall[NFFT+CP_FIRST, 2048];
+        v_shift_right_complex16(scopy,sample,4);
+
+        v_conj_mul_complex16_int32(re32, im32, scopy, scopy);
+        let energy = v_sum_int32(re32);
+
+        if (energy > threshold) then {
+          -- Printout now moved to uplinkPHY, only when CRC fails
+          --printTime(getRXTime());
+          --println ": uplink energy detected, energy level: ", energy;
+          DEBUG_energy := true;
+          DEBUG_energy_level := energy;
+        } else {
+          DEBUG_energy := false;
+        }
+      }
+    }
+#endif
+
+    -- There is a bug in folding sym_cnt so we have to use times here
+    do{sym_cnt := 0;}
+    times 7 {
+    -- for sym_cnt in [0, 7] {
+      let s = sall[start, NFFT+CP_OTHER];
+      do {
+        -- Multiply operations preserve precision, but FFT decreases it (by 3-4 bits)
+        -- TODO: check if we can improve precision of FFT, or whether we should do AGC before FFT as well
+        if (sym_cnt == 0) then {
+          symbol := s[CP_FIRST/2, NFFT];
+          v_mul_complex16(symbol, symbol, params.halfsc0, 15);
+          symbol := sora_fft(symbol);
+          v_mul_complex16(symbol, symbol, params.phCorr0, 15);
+          start := start + NFFT + CP_FIRST;
+        } else {
+          symbol := s[CP_OTHER/2, NFFT];
+          v_mul_complex16(symbol, symbol, params.halfsc, 15);
+          symbol := sora_fft(symbol);
+          v_mul_complex16(symbol, symbol, params.phCorr, 15);
+          start := start + NFFT + CP_OTHER;
+        }
+        sym_cnt := sym_cnt + 1;
+      }
+
+      emits symbol[NFFT - NULRB*12/2, NULRB*12/2];
+      emits symbol[1, NULRB*12/2];
+    }
+    do{cnt := cnt + 1};
+  }
+};
+
+
+
+{-
+fun comp demodulate(params : struct ULRXParams) {
+  var symbol : arr[NFFT] complex16;
+  var sym_cnt : int16 := 0;
+
+  repeat {
+    s <- takes NFFT+CP_OTHER;
+    if (sym_cnt == 0) then { takes (CP_FIRST-CP_OTHER); return (); }
+     
+    do {
+      if (sym_cnt == 0) then {
+        symbol := s[CP_FIRST/2, NFFT];
+        v_mul_complex16(symbol, symbol, params.halfsc0, 15);
+        symbol := sora_fft(symbol);
+        v_mul_complex16(symbol, symbol, params.phCorr0, 15);
+      } else {
+        symbol := s[CP_OTHER/2, NFFT];
+        v_mul_complex16(symbol, symbol, params.halfsc, 15);
+        symbol := sora_fft(symbol);
+        v_mul_complex16(symbol, symbol, params.phCorr, 15);
+      }
+      sym_cnt := (sym_cnt + 1) % 7;
+    }
+
+    emits symbol[NFFT - NULRB*12/2, NULRB*12/2];
+    emits symbol[1, NULRB*12/2];
+  }
+};
+-}
+

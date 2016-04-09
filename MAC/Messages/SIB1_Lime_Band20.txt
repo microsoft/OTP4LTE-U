@@ -1,0 +1,84 @@
+
+
+     Standard Specification Version: 3GPP TS36.331 Rel12 V12.3.0
+ Message name: BCCH-DL-SCH-Message
+ Message PDU(16octets):684D0AC01910F66E82119246A9800000
+
+
+
+             BCCH-DL-SCH-Message:
+               message(BCCH-DL-SCH-MessageType):
+68 0.......    BCCH-DL-SCH-MessageType = 0 :c1
+    .1......     c1 = 1 :systemInformationBlockType1
+                  SystemInformationBlockType1:
+    ..1.....       p-Max = 1 :Present
+    ...0....       tdd-Config = 0 :Absent
+    ....1...       nonCriticalExtension = 1 :Present
+                   cellAccessRelatedInfo:
+    .....0..        csg-Identity = 0 :Absent
+                    PLMN-IdentityList:
+    ......00         No. of PLMN-IdentityList = 0 :0 + 1 = 1
+4D 0.......
+                     PLMN-IdentityInfo:
+                      PLMN-Identity:
+    .1......           mcc = 1 :Present
+                       MCC:
+                        MCC-MNC-Digit[0]:
+    ..0011..             MCC-MNC-Digit = 3
+                        MCC-MNC-Digit[1]:
+    ......01             MCC-MNC-Digit = 4
+0A 00......
+                        MCC-MNC-Digit[2]:
+    ..0010..             MCC-MNC-Digit = 2
+                       MNC:
+    ......1.            No. of MNC = 1 :1 + 2 = 3
+                        MCC-MNC-Digit[1]:
+    .......0             MCC-MNC-Digit = 6
+C0 110.....
+                        MCC-MNC-Digit[2]:
+    ...0000.             MCC-MNC-Digit = 0
+                        MCC-MNC-Digit[3]:
+    .......0             MCC-MNC-Digit = 0
+19 000.....
+    ...1....          cellReservedForOperatorUse = 1 :notReserved
+                    TrackingAreaCode:
+    ....1001         TrackingAreaCode = 1001000100001111b
+10 00010000
+F6 1111....
+                    CellIdentity:
+    ....0110         CellIdentity = 0110011011101000001000010001b
+6E 01101110
+82 10000010
+11 00010001
+92 1.......        cellBarred = 1 :notBarred
+    .0......        intraFreqReselection = 0 :allowed
+    ..0.....        csg-Indication = 0 :False
+                   cellSelectionInfo:
+    ...1....        q-RxLevMinOffset = 1 :Present
+                    Q-RxLevMin:
+    ....0010         Q-RxLevMin = 9 :9 - 70 = -61
+46 01......
+    ..000...        q-RxLevMinOffset = 0 :0 + 1 = 1
+                   P-Max:
+    .....110        P-Max = 53 :53 - 30 = 23
+A9 101.....
+                   FreqBandIndicator:
+    ...01001        FreqBandIndicator = 19 :19 + 1 = 20
+80 1.......
+                   SchedulingInfoList:
+    .00000..        No. of SchedulingInfoList = 0 :0 + 1 = 1
+                    SchedulingInfo:
+    ......00         si-Periodicity = 0 :rf8
+00 0.......
+                     SIB-MappingInfo:
+    .00000..          No. of SIB-MappingInfo = 0
+    ......00       si-WindowLength = 0 :ms1
+00 0.......
+    .00000..       systemInfoValueTag = 0
+                   nonCriticalExtension(SystemInformationBlockType1-v890-IEs):
+    ......0.        lateNonCriticalExtension = 0 :Absent
+    .......0        nonCriticalExtension = 0 :Absent
+
+ Copyright (C) 2010-2012 3GPP Message Analyser
+ Bug report, wrong parsing result, please e-mail to 3GPP Message Analyser                                                                     
+  

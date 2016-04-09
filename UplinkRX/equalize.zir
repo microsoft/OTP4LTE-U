@@ -1,0 +1,134 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <externals.blk>
+#include "drs.zir"
+#include "../DnlinkTX/definitions.zir"
+
+
+fun abs(c : complex16) {
+    return sqrt(double(c.re * c.re) + double(c.im * c.im));
+}
+
+
+-- DRS calculation is currently slow so we precalculate for a fixed number of RB
+fun init_DRS(var params : struct ULRXParams, NCellID : int16, NRB : int16) {
+  for ns in [0, 20] {
+    params.drs[ns * NULRB * 12, NULRB * 12] := drs(ns, NCellID, NRB);
+  }  
+}
+
+
+#define PUDCH_WIDTH             (NULRB-2)
+
+
+-- Equalize one slot of NRB blocks.
+-- TODO: proper equalization - this is magnitude only
+fun comp equalize(NCellID : int16, NRB : int16, subframe : int16, startRB : int16, params : struct ULRXParams) {
+var ns : int16 := subframe * 2;
+var eq : arr[PUDCH_WIDTH * 12 * 14] complex16; 
+var chanCoeff : arr[PUDCH_WIDTH * 12 * 2] complex16; 
+var re32:arr[12] int32;
+var im32:arr[12] int32;    
+var sq_norm32:arr[12] int32;
+
+  repeat{
+        -- Take one slot but without top and bottom RBs, belonging to PUCCH
+        (grid : arr complex16) <- takes PUDCH_WIDTH * 12 * 14;
+
+        -- Set scaling norms:
+        -- Works in amplitude range 1x-64x, which corresponds to dynamic range of 36 dB
+        -- In terms of energy, as measured in demodulate.zir, it works from 1400 - max(~12e6)
+        -- Noise observed in the lab is ~500, so the minimum dynamic range is around SNR=4dB
+        -- It should be possible to decrease this further by decreasing both 
+        -- eq_norm_shift and norm_shift, at the expence of lower precision at high SNRs (not sure we care)
+        let eq_norm_shift = 9 - 4;
+        let norm_shift = 10 - 4;
+
+        -- Calculate the inverse
+        do {
+          for k in [0,2] {
+
+            -- DRS calculation is currently slow so we precalculate for a fixed number of RB
+            -- let ref_pilots = drs(ns, NCellID, NRB);
+            let ref_pilots = params.drs[ns * NULRB * 12, NULRB * 12]
+            let rcv_pilots = grid[PUDCH_WIDTH * 12 * 7 * k + PUDCH_WIDTH * 12 * 3, PUDCH_WIDTH * 12];
+
+            for i in [startRB, NRB] {
+              -- Calculate sq_norm
+              v_conj_mul_complex16_int32(re32, im32, rcv_pilots[i*12, 12], rcv_pilots[i*12, 12]);
+              v_shift_right_int32(sq_norm32,re32,int(eq_norm_shift));
+
+              -- Calculate angle
+              v_conj_mul_complex16_int32(re32, im32, ref_pilots[(i-startRB)*12, 12], rcv_pilots[i*12, 12]);
+
+              -- Adjust for norm
+              for j in [0,12] {
+                if sq_norm32[j] > 1 then { -- precision, 0.1 is 100
+                  chanCoeff[PUDCH_WIDTH*12*k + i*12+j] :=
+                       complex16{re=int16(re32[j]/sq_norm32[j]);im=int16(im32[j]/sq_norm32[j])}
+                } else {
+                  chanCoeff[PUDCH_WIDTH*12*k + i*12+j] := complex16{re=0;im=0}
+                }
+              }
+            }
+            ns := (ns + 1) % (10*2);
+          }
+
+          -- Average across two estimates to remove the noise
+          -- TODO: Enable averaging. Currently fails with Seg fault
+          -- for i in [0, NRB] {
+          --   v_add_complex16(chanCoeff[i*12,12], chanCoeff[i*12,12], chanCoeff[PUDCH_WIDTH*12*7 + i*12,12]);
+          --   v_shift_right_complex16(chanCoeff[i*12,12], chanCoeff[i*12,12], 1);
+          -- }
+
+        }
+        let symbols = {0, 1, 2, 4, 5, 6, 
+                       7, 8, 9, 11, 12, 13}; -- skip DRSs
+
+        -- TODO: Can the two loops be merged without performance implications?
+        do {
+          for i in [0, length(symbols)] {
+            let sym = symbols[i];
+            for j in [0, NRB] {
+              v_mul_complex16(eq[PUDCH_WIDTH * 12 * sym + 12 * (startRB + j), 12], 
+                              grid[PUDCH_WIDTH * 12 * sym + 12 * (startRB + j), 12], 
+                              chanCoeff[(startRB+j)*12, 12], norm_shift);
+            }
+          }
+        }
+
+        for i in [0, length(symbols)] {
+          let sym = symbols[i];
+
+          for j in [0, NRB] {
+            emits eq[PUDCH_WIDTH * 12 * sym + 12 * (startRB + j), 12];
+          }
+        }
+
+  }
+}

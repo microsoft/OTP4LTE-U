@@ -1,0 +1,86 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include "definitions.zir"
+#include "interleave.zir"
+
+
+-- NB: input is a set of 3 byte-aligned arrays. The length of each is datalen=inlen/3
+-- but each starts at i*datalenB where datalenB is byte-aligned (divisible by 8)
+fun rateMatchTurbo(input : arr [MAX_BIT_MSG_SIZE] bit, inlen : int16, var output : arr[MAX_BIT_MSG_SIZE] bit, outlen : int16, rv:int16) {
+var outint : arr[MAX_BIT_MSG_SIZE] int8;
+var len1 : int16;
+var len2 : int16;
+var len3 : int16;
+var k : int16;
+var j : int16;
+
+let datalen = inlen/3;
+let datalenB = if (datalen % 8 > 0) then ((datalen / 8) + 1)*8 else datalen;
+
+-- Using faster interleave3 function that combines 3 interleavers in one and saves ~20%-30%
+len1 := interleave3(input, datalenB, inlen/3, outint, INTL_TURBO);
+len2 := len1;
+let Kw = 3*len1;
+
+{-
+len1 := interleave(input[0, MAX_BIT_MSG_SIZE/3],          inlen/3, outint[0, MAX_BIT_MSG_SIZE/3], INTL_TURBO, 0);
+len2 := interleave(input[datalenB, MAX_BIT_MSG_SIZE/3],   inlen/3, outint[len1, MAX_BIT_MSG_SIZE/3], INTL_TURBO, 0);
+len3 := interleave(input[2*datalenB, MAX_BIT_MSG_SIZE/3], inlen/3, outint[len1+len2, MAX_BIT_MSG_SIZE/3], INTL_TURBO, 1);
+let Kw = len1+len2+len3;
+-}
+
+
+let R = len1 / 32;
+-- Note: Ncb is taken directly from 36.212 and does not match in value with the same variable as in Matlab code!
+let Ncb = Kw;                 -- TODO: have skipped all the Nsoft stuff
+
+-- NOTE: Doug's original code used a different Ncb2, which didn't seem to match the standard
+-- but allowed us to be detected by a dongle, so we kept it. 
+-- I tested it with the standard variant and the dongle still detects us (more often than before)
+-- So we keep the standard version (Ncb2 = Ncb), and we keep the old version for archive:
+--let Ncb2 = inlen;
+
+let Ncb2 = Ncb;
+let k0 = R * (2 * ceil_int16(double(Ncb2) / (8.0*double(R))) * rv + 2);
+
+-- println Ncb, ", ", Ncb2, ", ", k0, ", ", inlen;
+
+k := 0; j := 0;
+while (k < outlen) {
+  let ind = (k0 + j) % Ncb in  
+  let val = if ind < len1 then outint[ind] 
+                          else if ((ind - len1) % 2 == 0) then outint[len1 + (ind - len1)/2] 
+                                                          else outint[len1+len2 + (ind - len1 - 1)/2] in
+  if (val != -1) then {
+    output[k] := bit(val);
+    k := k + 1;
+  }
+  j := j+1;
+}
+
+};
+

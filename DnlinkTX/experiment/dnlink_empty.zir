@@ -1,0 +1,125 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include <externals.blk>
+#include "../definitions.zir"
+#include "../../General/TimingInfo.zir"
+#include "../../General/debug.zir"
+
+#include "../genTemplateSubframe.zir"
+#include "../addDCI0ToSubframe.zir"
+#include "../addMIBToSubframe.zir"
+#include "../addSIBToSubframe.zir"
+#include "../addDLSCHToSubframe.zir"
+
+
+#define FFT_1024
+
+#include "../modulate.zir"
+
+
+
+
+-- Take DL-SCH packets from the input. Keep sending the frame and schedule the taken packets accordingly
+-- Assumption: packets arrive in order in terms of (frame, subframe) numbering.
+-- Use addACK == 1 to add hard-coded ACKs to each frame
+fun comp dnlinkGenFrame(addACK : bool) {
+  var originalCellGrid : arr[10*NDLRB*12*14] complex16;
+  var cellGrid : arr[10*NDLRB*12*14] complex16;
+  
+  var frame : int16 := 0;
+
+  let tx = configTX();
+
+  -- Initialize frame once for all
+  for sf in [0, 10]{
+    let subframe = int16(sf);
+    genTemplateSubframe(originalCellGrid[int32(sf)*NDLRB*12*14, NDLRB*12*14], subframe, tx, addACK);
+  }
+   --init packet
+  
+--  times 1{
+  repeat {
+
+    x <- take;
+    if(x >=9 || x <0) then {
+      do {println "x must be in [0,8], while you input:", x;}
+    }
+    -- Copy original frame to avoid having stale copies of packets
+    -- that can confuse UE (i.e. a wrong SIB at a wrong place)
+    do{copy_complex16(cellGrid, originalCellGrid, 10*NDLRB*12*14)};
+    for (subframe : int16) in [0, 10]{
+
+      -- addTestDCI0ToSubframe(cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14], frame, subframe, tx);
+      addMIBToSubframe(cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14], frame, subframe, tx);
+      addSIBToSubframe(cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14], frame, subframe, tx);
+      -- add empty and fill subframes
+      --do { println "subframe:",subframe; }
+
+      if (subframe%5 != 0) then {
+          if (int32(subframe) <= x + int32(x/5)) then {
+            --do {println "add SIB at:",subframe;}
+            addSIBToSubframe(cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14], 0, 0, tx);
+          }
+          else {
+            do { zero_complex16(cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14]); }
+          }
+       }
+
+      -- else {
+          --empty all
+        --  do { zero_complex16(cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14]); }
+      -- }
+       --end of add empty and fill subfames
+       emits cellGrid[int32(subframe)*NDLRB*12*14, NDLRB*12*14];
+    } -- end of for loop
+    do {frame := (frame + 1) % LTE_NO_FRAMES};
+  }--end of repeat
+};
+
+
+fun comp scale() {
+var out : arr[16] complex16;
+
+  repeat {
+    x <- takes 16;
+    do {
+      v_shift_right_complex16(out, x, 4);
+    }
+    {-----
+    for i in [0, 16] {
+      do {println out[i].re,",",out[i].im;}
+    }
+    -----}
+    emits out;
+  }
+}
+
+
+
+
+let comp main = read[int32] >>> dnlinkGenFrame(true) >>> modulate()
+   >>> scale() >>> write

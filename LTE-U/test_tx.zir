@@ -1,0 +1,95 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#define FFT_1024
+#define FAKE_TIME       1
+
+--#include "../DnlinkTX/dnlinkPHY.zir"
+#include "dnlinkPHY_w_CTS.zir"
+
+
+fun debugPrint(i : int) {
+   return true;
+}
+
+fun comp scale() {
+var out : arr[16] complex16;
+
+  repeat {
+    x <- takes 16;
+    do {
+      v_shift_right_complex16(out, x, 4);
+    }
+    {- 
+    for i in [0, 16] {
+      do {println out[i].re,",",out[i].im;}
+    }
+    -}
+    emits out;
+  }
+}
+
+
+fun comp driver() {
+var p : struct MACDLPacket;
+var cnt : int16 := 0;
+  -- Init packet
+  do {
+    p.frame := 0; 
+    p.subframe := 0; 
+    p.packetType := MAC_DL_SCH;
+    p.packetSubtype := MAC_SIB2;
+    -- p.data 
+    p.len := 224;
+    p.RV := 0;
+    p.HARQNo := 0;
+    p.NDI := 0;
+    p.RNTI := SI_RNTI;
+    p.lenRB := 12;
+    p.startRB := 0;
+  }
+
+  repeat {
+    let sf = cnt % 10;
+    let f = (cnt / 10)%1024;
+    do{p.frame := f};
+    do{p.subframe := sf};
+    do{p.packetType := MAC_DL_SCH};
+    emit p;
+
+#ifdef PERF
+    do{p.packetType := MAC_NO_PKT};
+    emit p;
+#endif
+
+    do{cnt := (cnt+1) % 10240};
+  }
+}
+
+
+let comp main = read[int16] >>> driver() >>> dnlinkPHY >>> scale() >>> write
+
+

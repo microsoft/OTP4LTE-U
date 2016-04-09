@@ -1,0 +1,76 @@
+Standard Specification Version: 3GPP TS36.331 Rel8 V8.19.0
+Message name: BCCH-DL-SCH-Message
+Message PDU(16octets):60400403000100001009106C9800419E
+
+
+             BCCH-DL-SCH-Message:
+              message(BCCH-DL-SCH-MessageType):
+60 0.......    BCCH-DL-SCH-MessageType = 0 :c1
+   .1......     c1 = 1 :systemInformationBlockType1
+                 SystemInformationBlockType1:
+   ..1.....       p-Max = 1 :Present
+   ...0....       tdd-Config = 0 :Absent
+   ....0...       nonCriticalExtension = 0 :Absent
+                  cellAccessRelatedInfo:
+   .....0..        csg-Identity = 0 :Absent
+                   PLMN-IdentityList:
+   ......00         No. of PLMN-IdentityList = 0 :0 + 1 = 1
+40 0.......
+                    PLMN-IdentityInfo:
+                     PLMN-Identity:
+   .1......           mcc = 1 :Present
+                      MCC:
+                       MCC-MNC-Digit[0]:
+   ..0000..             MCC-MNC-Digit = 0
+                       MCC-MNC-Digit[1]:
+   ......00             MCC-MNC-Digit = 0
+04 00......
+                       MCC-MNC-Digit[2]:
+   ..0001..             MCC-MNC-Digit = 1
+                      MNC:
+   ......0.            No. of MNC = 0 :0 + 2 = 2
+                       MCC-MNC-Digit[1]:
+   .......0             MCC-MNC-Digit = 0
+03 000.....
+                       MCC-MNC-Digit[2]:
+   ...0001.             MCC-MNC-Digit = 1
+   .......1          cellReservedForOperatorUse = 1 :notReserved
+                   TrackingAreaCode:
+00 00000000         TrackingAreaCode = 0000000000000001b
+01 00000001
+                   CellIdentity:
+00 00000000         CellIdentity = 0000000000000000000100000000b
+00 00000000
+10 00010000
+09 0000....
+   ....1...        cellBarred = 1 :notBarred
+   .....0..        intraFreqReselection = 0 :allowed
+   ......0.        csg-Indication = 0 :False
+                  cellSelectionInfo:
+   .......1        q-RxLevMinOffset = 1 :Present
+                   Q-RxLevMin:
+10 000100..         Q-RxLevMin = 4 :4 - 70 = -66
+   ......00        q-RxLevMinOffset = 0 :0 + 1 = 1
+6C 0.......
+                  P-Max:
+   .110110.        P-Max = 54 :54 - 30 = 24
+                  FreqBandIndicator:
+   .......0        FreqBandIndicator = 19 :19 + 1 = 20
+98 10011...
+                  SchedulingInfoList:
+   .....000        No. of SchedulingInfoList = 0 :0 + 1 = 1
+00 00......
+                   SchedulingInfo:
+   ..000...         si-Periodicity = 0 :rf8
+                    SIB-MappingInfo:
+   .....000          No. of SIB-MappingInfo = 1
+41 01......
+                     SIB-Type:
+   ..0.....           SIB-Type ENUMERATED value from = 0 :before Extension marker
+   ...0000.            SIB-Type = 0 :sibType3
+   .......1       si-WindowLength = 6 :ms40
+9E 10......
+   ..01111.       systemInfoValueTag = 15
+   .......0  Spare Bits = 0b
+Copyright (C) 2010-2012 3GPP Message Analyser
+Bug report, wrong parsing result, please e-mail to 3GPP Message Analyser

@@ -1,0 +1,181 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#define FFT_1024
+
+
+
+#include <externals.blk>
+#include <bits.blk>
+
+#include "../General/timingInfo.zir"
+#include "../DnlinkTX/definitions.zir"
+#include <abs.blk>
+
+
+
+
+-- PRACH CP, currently hard-coded, in samples at @1.92MHz
+-- PRACH algorithm is designed to expect PRACH from half of CP
+#define PRACH_CP        3168
+#define PRACH_SAMPLING  16
+
+--#define MAX_DUMP_BUF    (30720000)
+#define MAX_DUMP_BUF    (3072000)
+
+
+
+#ifdef MAC_TEST
+   #define START_COUNTER        (2*(7*2048+6*144+160))
+#else
+   #define START_COUNTER        0
+#endif
+
+
+
+
+#ifdef FFT_1024
+  #define SAMPLING      2
+#else
+  #define SAMPLING      1
+#endif 
+
+#define NFFT            (2048/SAMPLING)
+#define CP_FIRST        (160/SAMPLING)
+#define CP_OTHER        (144/SAMPLING)
+
+
+
+
+
+fun comp stamp_ulpkt(){
+var pkt:struct MACULPacket;
+  repeat{
+    (x:struct MACULPacket)<-take;
+    do{
+      pkt:=x;
+      let time = getRXTime();
+      let frame = time.frame;
+      let subframe = time.subFrame;
+      pkt.frame := frame;
+      pkt.subframe := subframe;
+
+      -- Invert bits in RX packet
+      for i in [0, pkt.len/8] {
+        pkt.data[i*8,8] := invert_bits(pkt.data[i*8,8])
+      }
+    };
+    emit pkt;
+  }
+}
+      
+    
+    
+
+
+fun comp rx() {
+  var sampleCounter : int32 := START_COUNTER;
+
+  -- Energy detection related
+  var last_sampleCounter : int32 := 0;
+  var last_frame : int16 := -100;
+  var energy_seq : int32 := 0;
+  var detect_seq : int32 := 0;
+
+  -- PRACH related
+  var prachSeq : arr[1536] complex16;
+
+  -- PULSCH related
+  var ul_params : struct ULRXParams;
+  var pulschBuf : arr[2*(NFFT*7+CP_OTHER*6+CP_FIRST)] complex16; 
+
+#ifdef DUMP
+  -- DUMP
+  var RX_test : int16 := -1; 
+  var out_cnt : int16 := 0;
+  var energy_detect : bool;
+#endif
+
+
+  let cell_params = configTX();
+
+
+
+
+#ifdef DUMP
+--  repeat {
+  until (out_cnt > 5) {
+#else
+  repeat {
+#endif
+
+    let time = convertSampleCounterToTimeInfo(sampleCounter);
+    do {
+      setRXTime(time);
+    }
+
+    -- Detection for PRACH configuration index 0
+    if (time.frame % 2 == 0 && time.subFrame == 1) then {
+      -- Look for PRACH: currently, in each subframe we either look for PRACH or receive PULSCH
+
+      x <- takes 2*(NFFT*7+CP_OTHER*6+CP_FIRST);
+      do {
+        for i in [0, 2*(NFFT*7+CP_OTHER*6+CP_FIRST)-1] {
+          var x1 : complex16 := x[i];
+          var x2 : complex16 := x[i+1];
+          if (abs_int16(x1.re-x2.re) != 1 && abs_int16(x1.re-x2.re) != 0 && abs_int16(x1.re-x2.re) != 3071) then {
+            x1.re := x1.re + 0;
+            --println "Error: ", i, " ", abs_int16(x1.re-x2.re), " ", x1.re, " ", x2.re;
+            --println x;
+            --error "AAA";
+          }
+        }
+      }
+    }
+
+
+    do {
+      --sampleCounter := (sampleCounter + 2*(NFFT*7+CP_OTHER*6+CP_FIRST)) % maxSampleCounterVal;
+      sampleCounter := (sampleCounter + 2*(2048*7+144*6+160)) % maxSampleCounterVal;
+    }
+
+  }
+
+};
+
+
+
+
+#ifdef FFT_1024
+  #ifdef DUMP
+    let comp main = read >>> rx() >>> write
+  #else
+    let comp main = read >>> rx() >>> write[struct MACULPacket]
+  #endif
+#else
+  let comp main = read >>> rx() >>> write[struct MACULPacket]
+#endif
+

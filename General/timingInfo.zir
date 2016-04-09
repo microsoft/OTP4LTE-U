@@ -1,0 +1,98 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+
+#include "../DnlinkTX/Definitions.zir"
+
+
+struct TimingInfo = { 
+  frame : int16;
+  subFrame : int16;
+  slot : int16;
+  symbol : int16;
+  sample : int16
+}
+
+let SlotLen = (2048 + 160) + 6*(2048+144);
+let SubFrameLen = SlotLen * 2;
+let FrameLen = SlotLen * 2 * 10;
+
+let maxSampleCounterVal = (FrameLen * 1024);
+
+
+fun convertSampleCounterToTimeInfo(sampleCounter : int32) {
+  let frame = sampleCounter / FrameLen;
+  let subFrame = (sampleCounter / SubFrameLen) % 10;
+  let slot = (sampleCounter / SlotLen) % 2;
+  let symbol = if (sampleCounter % SlotLen > (2048+160)) then (1 + (sampleCounter % SlotLen - (2048+160)) / 2192) else 0;
+  let sample = if (symbol > 1) then sampleCounter % SlotLen - (2048+160) - (symbol-1)*2192 
+                               else sampleCounter % SlotLen - symbol * (2048 + 160);
+  
+  return TimingInfo{frame=int16(frame); subFrame=int16(subFrame); 
+                    slot=int16(slot); symbol=int16(symbol); sample=int16(sample)};
+}
+
+
+fun convertTimeInfoToSampleCounter(time : struct TimingInfo) {
+  let sampleWithinSlot = if (time.symbol >= 1) then (2048+160) + (2048+144) * int32(time.symbol-1) + int32(time.sample)
+                                               else int32(time.sample);
+  return int32(time.frame)*FrameLen + int32(time.subFrame) * SubFrameLen 
+       + int32(time.slot) * SlotLen + sampleWithinSlot;
+}
+
+
+fun printTime(time: struct TimingInfo) {
+  let sampleCounter = convertTimeInfoToSampleCounter(time);
+  print time.frame, ", ", time.subFrame, ", ", time.slot, ", ", time.symbol, ", ", time.sample, " (", sampleCounter, ")";
+}
+
+
+#if FAKE_TIME
+-- For PERF we use the standard Ziria and time in each test case manually
+var globalTXTime : struct TimingInfo;
+var globalRXTime : struct TimingInfo;
+fun setRXTime(time: struct TimingInfo) { globalRXTime := time}
+fun getRXTime() { return globalRXTime; }
+fun setTXTime(time: struct TimingInfo) { globalTXTime := time} 
+fun getTXTime() { return globalTXTime; }
+fun setRAPID(rapid : int8) { var x :int; x := 0} 
+fun getRAPID() { return 0 }
+fun getEnergyDetectionThreshold() { return 2000000000 }
+#else
+-- Get and set global RX and TX times that are accessible from both threads
+fun external setRXTime(time: struct TimingInfo) : ()
+fun external getRXTime() : struct TimingInfo
+fun external setTXTime(time: struct TimingInfo) : ()
+fun external getTXTime() : struct TimingInfo
+fun external setRAPID(rapid : int8) : ()
+fun external getRAPID() : int8
+fun external getEnergyDetectionThreshold() : int32
+#endif
+
+
+-- DEBUG: PUCCH sync goes through a global var, for now
+var globalPUCCH : struct MACULPacket;

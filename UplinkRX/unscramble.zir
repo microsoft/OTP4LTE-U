@@ -1,0 +1,87 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include <externals.blk>
+--#include "../DnlinkTX/gold.zir"
+#include "../DnlinkTX/definitions.zir"
+
+
+fun comp unscramble(len : int16, g : arr[MAX_GOLD_SEQUENCE_LEN] bit) {
+    var pos : int16 := 0;
+    var scram1 : arr[8] int8;
+    var scram2 : arr[8] int8;
+
+    times (int32(len) / 16) {
+
+      -- ORIGINAL
+      -- (x : int8) <- take;
+      -- if (g[pos] == '1) then {
+      --     emit x;
+      -- } else {
+      --     emit -x;
+      -- }
+      -- do {pos := pos + 1};
+
+      --do{println pos};
+
+      (x : arr[16] int8) <- takes 16;
+      let g1 = g[pos, 8];
+      let g2 = g[pos+8, 8];
+      do {
+          -- These two loop should LUT. The input is 8 bits, and the output is 16B, in total 4K
+          for i in [0, 8] {
+            if (g1[i] == '1) then {
+               scram1[i] := -1;
+               -- emit x;
+            } else {
+               scram1[i] := 1;
+               -- emit -x;
+            }
+          }
+
+          for i in [0, 8] {
+            if (g2[i] == '1) then {
+               scram2[i] := -1;
+               -- emit x;
+            } else {
+               scram2[i] := 1;
+               -- emit -x;
+            }
+          }
+
+          -- TODO: If we move this line from above to here, --vectorize --autolut produces a bug (memory access error)
+          -- pos := pos + 16;
+      }
+
+      emits v_sign_int8(x[0,8], scram1);
+      emits v_sign_int8(x[8,8], scram2);
+
+      do{pos := pos + 16};
+
+    }
+};
+

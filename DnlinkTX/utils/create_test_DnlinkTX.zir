@@ -1,0 +1,185 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include <externals.blk>
+#include <bits.blk>
+#include "../definitions.zir"
+
+fun comp test(startframe : int16, endframe : int16, rapid : int8, raRnti : int32) {
+var sib1_data : arr[MAX_MSG_SIZE] bit;
+var sib2_data : arr[MAX_MSG_SIZE] bit;
+var rar_data : arr[MAX_MSG_SIZE] bit;
+var rapidbits : arr[8] bit;
+var tmparr : arr[1] int8;
+
+var sib1 : struct MACDLPacket;
+var sib2 : struct MACDLPacket;
+var rar : struct MACDLPacket;
+
+
+  do {
+    -- sib1 = '684c42821910f66e82119246a80000000000';
+    sib1_data[0, 144] := 
+          {'0,'1,'1,'0,'1,'0,'0,'0,'0,'1,'0,'0,'1,'1,'0,'0,'0,'1,'0,'0,'0,'0,'1,'0,'1,'0,'0,'0,'0,'0,'1,'0,'0,'0,'0,'1,
+           '1,'0,'0,'1,'0,'0,'0,'1,'0,'0,'0,'0,'1,'1,'1,'1,'0,'1,'1,'0,'0,'1,'1,'0,'1,'1,'1,'0,'1,'0,'0,'0,'0,'0,'1,'0,
+           '0,'0,'0,'1,'0,'0,'0,'1,'1,'0,'0,'1,'0,'0,'1,'0,'0,'1,'0,'0,'0,'1,'1,'0,'1,'0,'1,'0,'1,'0,'0,'0,'0,'0,'0,'0,
+           '0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0};
+
+    -- sib2 = '000000fe9f848000185a7a0220040800d009656aab07b7435ce46080';
+    sib2_data[0, 224] := 
+          {'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'1,'1,'1,'1,'1,'1,'1,'0,'1,
+           '0,'0,'1,'1,'1,'1,'1,'1,'0,'0,'0,'0,'1,'0,'0,'1,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,
+           '0,'1,'1,'0,'0,'0,'0,'1,'0,'1,'1,'0,'1,'0,'0,'1,'1,'1,'1,'0,'1,'0,'0,'0,'0,'0,'0,'0,'1,'0,'0,'0,'1,
+           '0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'1,'0,'0,'0,'0,'0,'0,'1,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'1,'1,'0,'1,
+           '0,'0,'0,'0,'0,'0,'0,'0,'1,'0,'0,'1,'0,'1,'1,'0,'0,'1,'0,'1,'0,'1,'1,'0,'1,'0,'1,'0,'1,'0,'1,'0,'1,
+           '0,'1,'1,'0,'0,'0,'0,'0,'1,'1,'1,'1,'0,'1,'1,'0,'1,'1,'1,'0,'1,'0,'0,'0,'0,'1,'1,'0,'1,'0,'1,'1,'1,
+           '0,'0,'1,'1,'1,'0,'0,'1,'0,'0,'0,'1,'1,'0,'0,'0,'0,'0,'1,'0,'0,'0,'0,'0,'0,'0};
+
+    rar_data[0, 56] := 
+          { '0, -- Extension
+            '1, -- Type
+            '0,'0,'0,'0,'0,'0, -- RAPID; overwrite this
+            '0, -- Reserved
+            '0,'0,'0,'0,'0,'0,'0,'0,'0,'0,'0, -- Timing Advance
+            '0, -- Hopping
+            '0,'0,'1,'1,'0,'0,'1,'0,'0,'0, -- RB assignment; 200 = 5 PRBs starting at 0; 120 bits for our MCS
+            '0,'0,'0,'0, -- MCS; 0 means QPSK, I_TBS = 0, rv_idx = 0
+            '0,'0,'0, -- TPC; 0DB PUSCH power
+            '0, -- UL delay
+            '0, -- CQI request
+            '0,'0,'0,'0,'0,'0,'0,'0,'0,'1,'0,'0,'0,'0,'0,'0 -- Temp C-RNTI = 64
+          };
+
+     -- Overwrite RAPID.
+     tmparr[0] := rapid;
+     int8_to_bits(rapidbits, tmparr);
+     rar_data[2, 6] := invert_bits(rapidbits[0, 6]);
+  };
+
+  let sib1_len = 144;
+  let sib2_len = 224;
+  let rar_len = 56;
+
+
+  for frame in [startframe, (endframe-startframe+1)] {
+
+    let sib1_rv = (ceil_int16(3.0 * double((frame/2) % 4) / 2.0) % 4);
+    -- TODO: 36.321 5.3.1 last para; safe to hard-code 0 for our scheduler
+    let sib2_rv = (ceil_int16(3.0 * double(0) / 2.0) % 4);
+    let rar_rv = 0; -- TODO: should we be using DCI format 1C for RAR?
+
+
+    -- TODO: Fix in Ziria: the code below causes C compilation error
+    --let sib1 = MACDLPacket{
+    do { 
+      sib1 := MACDLPacket{
+                 frame = 0;
+                 subframe = 0;
+                 packetType = MAC_DL_SCH;
+                 packetSubtype = MAC_SIB1;
+                 data = sib1_data;
+                 len = sib1_len;
+                 RV = sib1_rv;
+                 RNTI = SI_RNTI
+               };
+    };
+
+    -- TODO: Fix in Ziria: the code below causes C compilation error
+    --let sib2 = MACDLPacket{
+    do {
+      sib2 := MACDLPacket{
+                 frame = 0;
+                 subframe = 0;
+                 packetType = MAC_DL_SCH;
+                 packetSubtype = MAC_SIB2;
+                 data = sib2_data;
+                 len = sib2_len;
+                 RV = sib2_rv;
+                 RNTI = SI_RNTI
+               };
+    };
+
+    -- TODO: Fix in Ziria: the code below causes C compilation error
+    --let rar = MACDLPacket{
+    do {
+      rar := MACDLPacket{
+                 frame = 0;
+                 subframe = 0;
+                 packetType = MAC_DL_SCH;
+                 packetSubtype = MAC_RAR;
+                 data = rar_data;
+                 len = rar_len;
+                 RV = rar_rv;
+                 RNTI = raRnti
+               };
+    };
+
+
+    -- Simulate the way MAC create SIBs
+    for subframe in [0, 10] {
+      let tx_sib1 = (frame % 2) == 0 && (subframe == 5);
+      let tx_sib2 = (frame % 8) == 0 && (subframe == 0);
+      let tx_rar  = (subframe == 1);
+
+      if (tx_sib1) then {
+        do {
+          sib1.frame := frame;
+          sib1.subframe := subframe;
+          println "SIB1: (", frame, ", ", subframe, ")";
+        }
+        emit sib1;
+      }
+
+      if (tx_sib2) then {
+        do {
+          sib2.frame := frame;
+          sib2.subframe := subframe;
+          println "SIB2: (", frame, ", ", subframe, ")";
+        }
+        emit sib2;
+      }
+
+      if (tx_rar) then {
+        do {
+          rar.frame := frame;
+          rar.subframe := subframe;
+          println "RAR: (", frame, ", ", subframe, ")";
+        }
+        emit rar;
+      }
+    }
+  }
+
+  -- Emit one more packet because Ziria stops after the last input and we don't want that
+  do {
+    sib2.frame := endframe+1;
+    sib2.subframe := 0;
+  }
+  emit sib2;
+
+}
+
+let comp main = read[int] >>> test(0, 2, 3, 8) >>> write;

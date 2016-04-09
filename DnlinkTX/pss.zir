@@ -1,0 +1,59 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#pragma once
+#include "definitions.zir" 
+
+-- Zadoff-Chu sequence (from the book)
+-- ZCseq = @(n)(exp(-i*pi*nPPSZCroot*n*(n+1)/63));
+-- Zadoff-Chu sequence (from 36.211, Section 6.11.1.1)
+-- Note: this can be done in double because it is run only once 
+-- during initialization time
+fun pss(nid2 : int16) {
+  var aPSS : arr[62] complex16;
+  -- PSS sequence definition (from 36.211, Section 6.11.1)
+  var aZCroots : arr[3] int16 := {25, 29, 34};
+  let nPPSZCroot = aZCroots[nid2] in
+
+  -- Defines precision of trigonometry
+  let normCoeff = 1000 in 
+
+  for n in [0,62] { 
+    if (n < 31) then {
+       aPSS[n] := complex16{re=int16(cosine_double_int32(int32(pi*double(normCoeff)*
+                                     double(nPPSZCroot)*double(n)*double(n+1)/63.0), normCoeff)*int32(bpsk_mod_amp)/normCoeff);
+                            im=int16(-sine_double_int32(int32(pi*double(normCoeff)*
+                                     double(nPPSZCroot)*double(n)*double(n+1)/63.0), normCoeff)*int32(bpsk_mod_amp)/normCoeff)};
+    } else {
+       aPSS[n] := complex16{re=int16(cosine_double_int32(int32(pi*double(normCoeff)*double(nPPSZCroot)
+                                    *double(n+1)*double(n+2)/63.0), normCoeff)*int32(bpsk_mod_amp)/normCoeff);
+                            im=int16(-sine_double_int32(int32(pi*double(normCoeff)*double(nPPSZCroot)
+                                    *double(n+1)*double(n+2)/63.0), normCoeff)*int32(bpsk_mod_amp)/normCoeff)};
+    }
+  }
+  return aPSS;
+};
+

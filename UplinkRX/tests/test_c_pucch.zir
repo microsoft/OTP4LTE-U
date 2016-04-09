@@ -1,0 +1,72 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include "../pucch.zir"
+
+
+let NSubframe = 8;
+let NCellID = 11;
+let DeltaShift = 3;     -- deltaPUCCH-Shift in SIB2
+let ResourceSize = 0;   -- nRB-CQI in SIB2
+
+let comp main = read[complex16] >>>
+{
+  var data : arr[168] complex16;
+  var params : struct ULRXParams;
+
+  let NSubframe = 8;
+  let NCellID = 11;
+  let ResourceIdx = 4;
+  let DeltaShift = 3; 
+
+  -- Static precalculation of drs codes/pilots
+  do{pucch_init_codes(params.pucch_drs, NCellID, DeltaShift)};
+
+  -- PUCCH
+--  pucch(NSubframe, NCellID, DeltaShift, ResourceSize, params);
+
+  for i in [0,14] {
+    x<-takes 600;
+    let ns = i / 7;
+    let startRE = pucch1i(ns, NCellID, ResourceIdx, DeltaShift, ResourceSize);
+    do{data[i*12,12] := x[startRE,12]};
+  };
+
+  
+  -- This is not entirely correct as PUCCH location above depends on ResourceIdx, 
+  -- but as long as ResourceIdx < 10 the PUCCH location doesn't change
+  for ri in [0,8] {
+    let corr = pucch_slot(data[0,7*12], 2*NSubframe, NCellID, ri, DeltaShift, params) +
+               pucch_slot(data[7*12,7*12], 2*NSubframe+1, NCellID, ri, DeltaShift, params);
+    -- Correlation with AGC is expected to be ~15e6. This is over 96 samples. 
+    -- Noise will have std deviation 15e6/96*sqrt(96) = 1.5e6, and we choose 3 stdev to remove false positives
+    let (corr_thr:int32) = 1500000 * 3;
+    emit complex16{re=int16(corr.re/1000000); im=int16(corr.im/1000000)};
+    -- do {println "Correlation with ResourceIdx=", ri, ": ", corr};
+  }
+
+} >>> write;
+

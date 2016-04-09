@@ -1,0 +1,2 @@
+These are helper files used to generate test cases for DnlinkTX/tests. 
+They are needed to create the appropriate binary inputs for Ziria, which are more difficult to do from Matlab

@@ -1,0 +1,78 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#define FFT_1024
+
+#include <abs.blk>
+#include "../fft3x512.zir"
+#include "../detectPRACH.zir"
+
+
+#define PRACH_SAMPLING  16
+#ifdef FFT_1024
+  #define SAMPLING      2
+#else
+  #define SAMPLING      1
+#endif 
+
+
+fun comp test_fullPRACH () {
+  var preambleTable : arr[840*NUM_PREAMBLES] complex16;
+  var w0Vec : arr[4] complex16;
+  var wVec : arr[1536] complex16;
+  var w2Vec : arr[1536] complex16;
+  var x : arr[1536] complex16;
+  var xf : arr[1536] complex16;
+  var out : struct PRACHInfo;
+
+  -- TODO: this need only be done once (make it static)
+  do{
+    w0Vec := init0_fft3x512 ();
+    wVec := init1_fft3x512 ();
+    w2Vec := init2_fft3x512 ();
+    preambleTable := detectPRACH_table();
+  };   
+  
+  {
+    (cp : arr complex16) <- takes (198/2*PRACH_SAMPLING/SAMPLING);
+    (xi : arr complex16) <- takes 1536*PRACH_SAMPLING/SAMPLING;
+    do {
+      -- Downsample by /16 to 1.92 MHz
+      for i in [0, 1536] {
+        x[i] := xi[i*PRACH_SAMPLING/SAMPLING];
+      };
+      --println x[0,10];
+      xf := fft3x512(x, w0Vec, wVec, w2Vec);
+      --println xf[0,10];
+      out := detectPRACH(xf, preambleTable);
+    };
+    emit int32(out.index);
+    emit int32(out.offset);
+    emit out.corr;
+  }
+};
+
+let comp main = read >>> test_fullPRACH() >>> write

@@ -1,0 +1,57 @@
+Standard Specification Version: 3GPP TS36.331 Rel8 V8.19.0
+Message name: DL-CCCH-Message
+Message PDU(8octets):60109B0030000B00
+
+
+             DL-CCCH-Message:
+              message(DL-CCCH-MessageType):
+60 0.......    DL-CCCH-MessageType = 0 :c1
+   .11.....     c1 = 3 :rrcConnectionSetup
+                 RRCConnectionSetup:
+                  RRC-TransactionIdentifier:
+   ...00...        RRC-TransactionIdentifier = 0
+   .....0..       criticalExtensions = 0 :c1
+   ......00        c1 = 0 :rrcConnectionSetup-r8
+10 0.......
+                    RRCConnectionSetup-r8-IEs:
+   .0......          nonCriticalExtension = 0 :Absent
+                     RadioResourceConfigDedicated:
+   ..0.....           Extension of RadioResourceConfigDedicated = 0 :Absent
+   ...1....           srb-ToAddModList = 1 :Present
+   ....0...           drb-ToAddModList = 0 :Absent
+   .....0..           drb-ToReleaseList = 0 :Absent
+   ......0.           mac-MainConfig = 0 :Absent
+   .......0           sps-Config = 0 :Absent
+9B 1.......           physicalConfigDedicated = 1 :Present
+                      SRB-ToAddModList:
+   .0......            No. of SRB-ToAddModList = 0 :0 + 1 = 1
+                       SRB-ToAddMod:
+   ..0.....             Extension of SRB-ToAddMod = 0 :Absent
+   ...1....             rlc-Config = 1 :Present
+   ....1...             logicalChannelConfig = 1 :Present
+   .....0..             srb-Identity = 0 :0 + 1 = 1
+   ......1.             rlc-Config = 1 :defaultValue
+   .......1             logicalChannelConfig = 1 :defaultValue
+                      PhysicalConfigDedicated:
+00 0.......            Extension of PhysicalConfigDedicated = 0 :Absent
+   .0......            pdsch-ConfigDedicated = 0 :Absent
+   ..0.....            pucch-ConfigDedicated = 0 :Absent
+   ...0....            pusch-ConfigDedicated = 0 :Absent
+   ....0...            uplinkPowerControlDedicated = 0 :Absent
+   .....0..            tpc-PDCCH-ConfigPUCCH = 0 :Absent
+   ......0.            tpc-PDCCH-ConfigPUSCH = 0 :Absent
+   .......0            cqi-ReportConfig = 0 :Absent
+30 0.......            soundingRS-UL-ConfigDedicated = 0 :Absent
+   .0......            antennaInfo = 0 :Absent
+   ..1.....            schedulingRequestConfig = 1 :Present
+                       SchedulingRequestConfig:
+   ...1....             SchedulingRequestConfig = 1 :setup
+   ....0000              sr-PUCCH-ResourceIndex = 0
+00 0000000.
+   .......0              sr-ConfigIndex = 5
+0B 0000101.
+   .......1              dsr-TransMax = 4 :n64
+00 00......
+   ..000000  Spare Bits = 000000b
+Copyright (C) 2010-2012 3GPP Message Analyser
+Bug report, wrong parsing result, please e-mail to 3GPP Message Analyser

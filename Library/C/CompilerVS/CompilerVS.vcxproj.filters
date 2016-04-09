@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="Ziria Header Files">
+      <UniqueIdentifier>{3ee7a1c0-8c1b-4ee8-b462-fbcf0b475eeb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Ziria Source Files">
+      <UniqueIdentifier>{86304d30-9b5f-47e2-8fcd-fbeeafd717ad}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Library">
+      <UniqueIdentifier>{7f3ce32d-b22c-4941-a8d9-f270f214e5dc}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\bit.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\buf_bit.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\buf_numerics8.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\buf_numerics16.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\buf_numerics32.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\ext_arr.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\ext_math.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\numerics.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_ext_lib.cpp">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_ext_visual.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_ext_viterbi.cpp">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_ip.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_thread_queues.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_threads.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\sora_radio.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\utils.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\wpl_alloc.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\buf_chunk.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\driver.cpp">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ZIRIA_ROOT)\csrc\params.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test.c">
+      <Filter>Ziria Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ChanDecode.c">
+      <Filter>Library</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\bit.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\buf.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\ext_arr.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\ext_math.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\numerics.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_ext_bricks.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_ext_visual.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_ip.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_thread_queues.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_threads.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_radio.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\types.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\utils.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\wpl_alloc.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\params.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\sora_ext_lib_fft.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ChanDecode.h">
+      <Filter>Library</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\common.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\fft_r4difx.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\ifft_r4difx.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\intalglutx.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ZIRIA_ROOT)\csrc\intalgx.h">
+      <Filter>Ziria Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\ChanDecode.txt">
+      <Filter>Library</Filter>
+    </Text>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,64 @@
+----------------------------------------------------------------------------------
+--
+-- MIT License
+--
+-- Copyright (c) 2016 Microsoft
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in
+-- all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-- THE SOFTWARE.
+--
+----------------------------------------------------------------------------------
+
+#include "externals.blk"
+#include "crc.zir"
+#include "convCode.zir"
+#include "rateMatchConv.zir"
+
+fun dcch(input : arr [27] bit, rnti : int32) {
+var inbuf : arr[MAX_BIT_MSG_SIZE] bit;
+var outcode : arr[MAX_BIT_MSG_SIZE] bit;
+var output : arr[MAX_BIT_MSG_SIZE] bit; 
+var codelen : int16;
+var tmparr : arr[2] int8;
+var tmpbits : arr[16] bit; 
+
+  -- Currently only single antenna so no scrambiling here
+  -- mask = ones(16, 1) * (cellrefp - 1); -- Doug's TODO: cellrefp = 4
+  -- c = [a; xor(crc16(a), mask)];
+
+  -- mask = bitget(rnti, 16:-1:1)';
+  -- c = [a; xor(crc16(a), mask)];
+
+  let inlen = 27;
+  inbuf[0, 27] := input;
+  inbuf[inlen, 16] := crc16(input, 27);
+
+  tmparr[0] := int8(rnti % 256);
+  tmparr[1] := int8(rnti / 256);
+  int8_to_bits(tmpbits, tmparr[0,2]);
+  for i in [0, 16] {
+    -- TODO: invert bits when endianness change
+    inbuf[inlen + int16(i)] := inbuf[inlen + int16(i)] ^ tmpbits[15-i];
+  } 
+
+  codelen := convCode(inbuf, inlen+16, outcode);
+  rateMatchConv(outcode, codelen, output, 72);  -- TODO: configurable PDCCH format
+
+  return output[0, 72];
+};
+
