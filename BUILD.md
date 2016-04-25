@@ -15,5 +15,5 @@ For instructions on how to build and run LTE-U, please see [README](LTE-U/README
 
 
 
-For any further help, please email [Bozidar](mailto:bozidar@microsoft.com)
+For any further help, please email [Bozidar](mailto:bozidar@microsoft.com).
 

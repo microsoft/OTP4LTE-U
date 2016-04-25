@@ -22,7 +22,9 @@ code is in subdirectory controller.
 
 
 To make PHY/MAC, run:
-make -B mac.out
+
+`make -B mac.out`
+
 
 
 
@@ -57,8 +59,8 @@ run in the same WiFi channel as LTE-U.
 To run CSAT, go to LTE/LTE-U/controller/. 
 
 Controller currently works only on Linux. To build CSAT, one needs:
-- libpcap, version ...
-- libjsoncpp, version ...
+- libpcap, version 1.5.3
+- libjsoncpp, version 0.6.0
 
 To get the WiFi sniffer working, one needs to install Ubuntu 14.04 or
 15.10.  It may work with other versions of Linux that support the
@@ -94,7 +96,7 @@ To run CSAT+LTE-U:
   
 
 
-
+For further questions and help, please email [Bozidar](mailto:bozidar@microsoft.com) or [Lei](mailto:kanglei1130@gmail.com).
 
 
 
