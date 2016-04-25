@@ -74,8 +74,8 @@ tx.c : tx.zir
 
 mac.out: rx.c tx.c
 # We need 64bit here because BladeRF won't link 32bit library
-	MODE='/p:Mode=LTEU /p:Radio=BladeRF' LIBS='bladeRF.lib' RUN_TYPE=64 EXTRAOPTS='$(EXTRAOPTS)' $(CP) mac.out
-#	MODE='/p:Mode=LTEU /p:Radio=Sora' RUN_TYPE=64 EXTRAOPTS='$(EXTRAOPTS)' $(CP) mac.out
+#	MODE='/p:Mode=LTEU /p:Radio=BladeRF' LIBS='bladeRF.lib' RUN_TYPE=64 EXTRAOPTS='$(EXTRAOPTS)' $(CP) mac.out
+	MODE='/p:Mode=LTEU /p:Radio=Sora' RUN_TYPE=64 EXTRAOPTS='$(EXTRAOPTS)' $(CP) mac.out
 # Use this one to compile 64-bit (without DebugPlot). CANNOT BE USED WITH TURBO_DECODER
 #	EXTRAOPTS='$(EXTRAOPTS)' $(CP) mac.out
 
