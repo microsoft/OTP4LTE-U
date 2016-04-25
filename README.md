@@ -10,9 +10,16 @@ OTP4LTE-U is built in [Ziria](http://research.microsoft.com/en-us/projects/ziria
 OTP4LTE-U is built for [Sora SDR platform](https://github.com/Microsoft/Sora). It can also run on [BladeRF SDR](https://www.nuand.com/), although BladeRF currently doesn't support 5 GHz spectrum access. 
 
 
+
+
 --------
+## Build instructions
+
+For build instructions please read [BUILD](build.md)
 
 
+
+--------
 ## Directory structure
 
 Current directory structure is as follows:
