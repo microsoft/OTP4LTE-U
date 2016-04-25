@@ -1,6 +1,8 @@
+# OTP4LTE-U: LTE-U implementation
+
 ***************************************************************************************
-OVERVIEW
-***************************************************************************************
+## OVERVIEW
+
 
 The system consists of one PC that runs Windows and has an SDR
 connected to it. It is currently tested with Windows and BladeRF and
@@ -16,8 +18,8 @@ code is in subdirectory controller.
 
 
 ***************************************************************************************
-BUILD
-***************************************************************************************
+## BUILD
+
 
 To make PHY/MAC, run:
 make -B mac.out
@@ -25,8 +27,8 @@ make -B mac.out
 
 
 ***************************************************************************************
-LTE-U with static parameters
-***************************************************************************************
+## LTE-U with static parameters
+
 
 To run LTE-U, with predefined parameters (no CSAT) type:
 ./run_eNodeB.sh <ONCYCLE> <OFFCYCLE> <TXGAIN> <ctsframes>
@@ -49,8 +51,8 @@ run in the same WiFi channel as LTE-U.
 
 
 ***************************************************************************************
-LTE-U with CSAT
-***************************************************************************************
+## LTE-U with CSAT
+
 
 To run CSAT, go to LTE/LTE-U/controller/. 
 
@@ -96,8 +98,8 @@ To run CSAT+LTE-U:
 
 
 ***************************************************************************************
-BLADE RF
-***************************************************************************************
+## BLADE RF
+
 
 For bladeRF: 
 TXGAIN should be from -35 to 25 for bladeRF, but it is not linear. 

@@ -1,3 +1,0 @@
-- Disable/remove differential CSAT and include standard CSAT
-- Add WiFi channel as a command line parameter
-- Rewrite CSAT to take important parameters through command line
