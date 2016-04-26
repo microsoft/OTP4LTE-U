@@ -150,17 +150,14 @@ To run CSAT+LTE-U:
 
 
 ***************************************************************************************
-## LTE-U with BladeRF
+## LTE-U with SORA and BladeRF SDRs
 
-To compile with BladeRF SDR support, go to `<git_root>/LTE-U`, edit `Makefile`, uncomment the following line
+LTE-U currently supports both Sora and BladeRF radio platforms. However, BladeRF 
+currently doesn't work at 5 GHz so it cannot be used for standard-compliant testing. 
 
-`MODE='/p:Mode=LTEU /p:Radio=BladeRF' LIBS='bladeRF.lib' RUN_TYPE=64 EXTRAOPTS='$(EXTRAOPTS)' $(CP) mac.out`
+The default Makefile will build the environment for Sora. To change to BladeRF, please copy 
+file Makefile.BLADERF to Makefile and build it. 
 
-and comment out the following line
-
-`MODE='/p:Mode=LTEU /p:Radio=Sora' RUN_TYPE=64 EXTRAOPTS='$(EXTRAOPTS)' $(CP) mac.out`
-
-Also, change the frequencies accordingly as BladeRF does not support 5 GHz. 
 
 
 
