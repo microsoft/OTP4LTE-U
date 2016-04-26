@@ -1301,6 +1301,21 @@ bool printRadioStats(writeSoraCtx *ctx, readSoraCtx *rctx)
 
 	return (isOutOfSync);
 }
+
+
+int Sora_SwitchTXFrequency(BlinkParams *params, bool center)
+{
+	int status = 0;
+	if (true == center) {
+	        SoraURadioSetCentralFreq(params->radioParams.radioId, params->radioParams.CentralFrequency);
+	}
+	else {
+	        SoraURadioSetCentralFreq(params->radioParams.radioId, params->radioParams.CentralFrequency + 40);
+	}
+	return status;
+}
+
+
 #endif
 
 

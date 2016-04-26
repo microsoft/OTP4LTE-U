@@ -51,7 +51,7 @@ HANDLE StartWinUThread(PWIN_UTHREAD_PROC function, PVOID context, int core, int 
 	DWORD dwThreadId;
 	HANDLE hThread = CreateThread(NULL, 0, function, context, 0, &dwThreadId);
 
-	if (core > 0 && core <= 3)
+	if (core >= 0 && core <= 3)
 	{
 		//assigns the thread to a processor/core
 		DWORD_PTR m_mask = 1 << core;

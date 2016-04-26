@@ -624,8 +624,10 @@ void mac_tx_schedule_next_SF_LTEU()
 			printf("Error when swiching to center frequency\n");
 		}
 #else
-		printf("Sora version has to be implemented!\n");
-		exit(1);
+		int status = Sora_SwitchTXFrequency(params_tx, true);
+		if (status < 0) {
+			printf("Error when swiching to center frequency\n");
+		}
 #endif
 	}
 	if (counter == outoncycle && outoffcyle > 0) {
@@ -635,8 +637,10 @@ void mac_tx_schedule_next_SF_LTEU()
 			printf("Error when swiching to side frequency\n");
 		}
 #else
-		printf("Sora version has to be implemented!\n");
-		exit(1);
+		int status = Sora_SwitchTXFrequency(params_tx, false);
+		if (status < 0) {
+			printf("Error when swiching to side frequency\n");
+		}
 #endif
 	}
 	

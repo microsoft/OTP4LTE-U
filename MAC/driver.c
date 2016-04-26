@@ -315,6 +315,8 @@ int __cdecl main(int argc, char **argv)
 			Sleep(1000);
 		}
 
+#ifndef LTE_U
+
 		if (firstInterrupt > 0)
 		{
 			printf(" ******** %llu iterations without interruption\n", firstInterrupt);
@@ -325,6 +327,7 @@ int __cdecl main(int argc, char **argv)
 			printf("\n\n ******** TX and RX not in sync (syncStateCnt=%lu, rxBlocked=%llu)!\n\n", rctx->syncStateCnt, rctx->rxBlocked);
 			break;
 		}
+#endif
 
 		bool outOfSync = printRadioStats(ctx, rctx);
 

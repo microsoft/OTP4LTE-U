@@ -180,6 +180,7 @@ DWORD WINAPI SoraTXWorker(void * pParam);
 
 bool printRadioStats(writeSoraCtx *ctx, readSoraCtx *rctx);
 
+int Sora_SwitchTXFrequency(BlinkParams *params, bool center);
 
 
 
