@@ -15,7 +15,7 @@ OTP4LTE-U is built for [Sora SDR platform](https://github.com/Microsoft/Sora). I
 --------
 ## Build instructions
 
-For build instructions please read [BUILD](build.md)
+For build instructions please read [BUILD](BUILD.md)
 
 
 
