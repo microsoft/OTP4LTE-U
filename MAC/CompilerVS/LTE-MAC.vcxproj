@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -90,8 +90,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PreprocessorDefinitions Condition="'$(Mode)|$(Radio)'=='LTEU|BladeRF'"> LTE_U;BLADE_RF;SW_TEST;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;TEST</PreprocessorDefinitions>
-      <PreprocessorDefinitions Condition="'$(Mode)|$(Radio)'=='LTEU|Sora'"> LTE_U;SW_TEST;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;TEST</PreprocessorDefinitions>
-      <PreprocessorDefinitions Condition="'$(Mode)'!='LTEU'">  WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;SORA_RF;TEST</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Mode)|$(Radio)'=='LTEU|Sora'"> LTE_U;SORA_RF;SW_TEST;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;TEST</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Mode)'!='LTEU'">  SORA_RF;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;SORA_RF;TEST</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level2</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -112,7 +112,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BLADE_RF;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;WIN64</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SORA_RF;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;WIN64</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level2</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -134,7 +134,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>BLADE_RF;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SORA_RF;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level2</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -154,7 +154,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BLADE_RF;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SORA_RF;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level2</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -262,6 +262,11 @@
   <ItemDefinitionGroup Condition="'$(Mode)' == 'BLADE_RF'">
     <ClCompile>
       <AdditionalOptions>/DBLADE_RF</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Mode)' == 'SORA_RF'">
+    <ClCompile>
+      <AdditionalOptions>/DSORA_RF</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
 </Project>

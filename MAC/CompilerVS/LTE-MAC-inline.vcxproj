@@ -94,7 +94,7 @@
 
       <PreprocessorDefinitions Condition="'$(Radio)'=='BladeRF'"> BLADE_RF;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
 
-      <PreprocessorDefinitions Condition="'$(Radio)'!='BladeRF'"> WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Radio)'!='BladeRF'"> SORA_RF;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
 
 
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -116,7 +116,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BLADE_RF;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86;SORA_PLATFORM;_BB11B_KERNEL;WIN64</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SORA_RF;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86;SORA_PLATFORM;_BB11B_KERNEL;WIN64</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level2</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -143,9 +143,9 @@ LTE_U;BLADE_RF;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDA
       <PreprocessorDefinitions Condition="'$(Radio)'=='BladeRF'"> BLADE_RF;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
 
       <PreprocessorDefinitions Condition="'$(Mode)|$(Radio)'=='LTEU|Sora'"> 
-LTE_U;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
+LTE_U;SORA_RF;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
 
-      <PreprocessorDefinitions Condition="'$(Radio)'!='BladeRF'">WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Radio)'!='BladeRF'">SORA_RF;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL</PreprocessorDefinitions>
 
 
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -172,9 +172,9 @@ LTE_U;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;S
 
       <PreprocessorDefinitions Condition="'$(Radio)'=='BladeRF'"> BLADE_RF;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;WIN64</PreprocessorDefinitions>
 
-      <PreprocessorDefinitions Condition="'$(Mode)|$(Radio)'=='LTEU|Sora'">  LTE_U;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;WIN64</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Mode)|$(Radio)'=='LTEU|Sora'">  LTE_U;SORA_RF;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;WIN64</PreprocessorDefinitions>
 
-      <PreprocessorDefinitions Condition="'$(Radio)'!='BladeRF'"> NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;WIN64</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Radio)'!='BladeRF'"> SORA_RF;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;SORA_PLATFORM;_BB11B_KERNEL;WIN64</PreprocessorDefinitions>
 
 
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -231,6 +231,11 @@ LTE_U;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);USER_MODE;BUILDARCHX86 ;S
   <ItemDefinitionGroup Condition="'$(Mode)' == 'BLADE_RF'">
     <ClCompile>
       <AdditionalOptions>/DBLADE_RF</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Mode)' == 'SORA_RF'">
+    <ClCompile>
+      <AdditionalOptions>/DSORA_RF</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
 </Project>
