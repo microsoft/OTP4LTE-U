@@ -55,8 +55,6 @@ Current directory structure is as follows:
 
 
 --------
-
-
 ## Current limitations:
 
 ### Uplink:
@@ -71,3 +69,10 @@ Current directory structure is as follows:
     (hardcoded in mac_tx_callback() in mac_tx.c)
   - Since we don't have a real-time feedback, we sent RAR in every frame
     It is hardcoded in subframe RAR_SUBFRAME (==6)
+
+
+
+--------
+## Code of conduct:
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
